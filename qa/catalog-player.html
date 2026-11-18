@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#a94108">
+<title>Catalog Player Check | Sync Opps. Ready to License</title>
+<style>
+:root{--bg:#fff8f1;--ink:#241913;--muted:#765c4d;--orange:#ae4509;--line:#edcfb9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Arial,Helvetica,sans-serif}
+.wrap{max-width:910px;padding:0 22px;margin:auto}
+header{background:#281b15;color:white}.nav{min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:18px}header strong{font-size:22px;letter-spacing:-.04em}header a{color:#ffe6d4;font-size:13px}
+main{padding-top:44px;padding-bottom:60px}
+.kicker{font-weight:850;color:#9c3b0b;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+h1{font-size:clamp(32px,5vw,48px);line-height:1.12;letter-spacing:-.055em;margin:9px 0 15px}
+h2{font-size:20px;margin:0 0 14px}p{color:var(--muted);margin:0 0 18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:26px;margin:22px 0;box-shadow:0 7px 22px #6a33120c}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:17px}
+label{display:block;font-weight:750;margin-bottom:7px}
+select,textarea{width:100%;padding:13px 14px;border-radius:9px;border:1px solid #cbb09e;background:#fffdfa;color:var(--ink);font:15px/1.5 Arial,Helvetica,sans-serif}
+textarea{min-height:110px;resize:vertical;overflow-wrap:anywhere;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+select:focus,textarea:focus,button:focus-visible{outline:3px solid #ffc191;outline-offset:3px}
+.fine{font-size:12px;color:var(--muted);margin-top:7px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+button{font:800 14px/1.25 Arial,sans-serif;padding:12px 22px;border-radius:100px;border:2px solid var(--orange);background:var(--orange);color:#fff;min-height:45px;cursor:pointer}
+button.secondary{background:#fff;color:#963a09}
+#status{margin-top:20px;padding:12px 16px;background:#fdf0e4;border-left:4px solid var(--orange);border-radius:5px;min-height:46px}
+#status.error{border-color:#ae2727;background:#fff2f1;color:#851f1f}
+#display{margin-top:18px}#display iframe{display:block;border:0;border-radius:10px;width:100%}
+#display audio{width:100%}
+.notice{background:#f8efe6;border-radius:10px;padding:15px 16px;font-size:13px;color:#604939}
+ul{padding-left:20px;margin:7px 0 0}li{margin:6px 0}
+#referenceArea{margin-top:16px;padding-top:17px;border-top:1px solid var(--line)}#referenceArea textarea{min-height:64px;readonly:true}#referenceArea[hidden]{display:none}
+mark{background:#ffdbc4}
+footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);padding:24px 0;background:#fff}
+@media(max-width:650px){.wrap{padding:0 16px}.grid{grid-template-columns:1fr}.card{padding:18px}.actions button{flex:1}}
+</style>
+</head>
+<body>
+<header><div class="wrap nav"><strong>Sync Opps. <span style="font-weight:500;font-size:15px;font-style:italic">Catalog QA</span></strong><a href="../">Return to the catalog</a></div></header>
+<main class="wrap">
+<div class="kicker">Catalog prepublication tool</div>
+<h1>Confirm that buyers can play the music</h1>
+<p>Test a member-authorized song or preview in the same kind of embedded player used by our public catalog. This tool does not publish, approve or upload audio.</p>
+<div class="card">
+<form id="testForm">
+<div class="grid"><div><label for="platform">Streaming service</label>
+<select id="platform"><option value="auto">Detect from link</option><option value="soundcloud">SoundCloud</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="bandcamp">Bandcamp</option><option value="apple">Apple Music</option><option value="disco">DISCO</option><option value="mp3">Direct MP3</option></select></div>
+<div><label for="scope">Testing requirement</label><div class="notice" id="scope">Must play for a visitor who is not signed in. Verify the title, the actual audio and the owner's permission to offer it for public listening.</div></div></div>
+<label for="source" style="margin-top:19px">Paste a track link or the official iframe embed code</label>
+<textarea id="source" required autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="https://open.spotify.com/track/... or https://youtu.be/... or official <iframe ...> code"></textarea>
+<div class="fine">For Bandcamp, use Share/Embed → Embed this track or album. For Spotify and YouTube, ordinary track/video links also work. For private SoundCloud, an unavailable Share/Embed control means the link may not be playable here.</div>
+<div class="actions"><button type="submit">Test this player</button><button type="button" id="clear" class="secondary">Clear</button></div>
+</form>
+<div id="status" role="status" aria-live="polite">No track loaded.</div>
+<div id="display"></div>
+<div id="referenceArea" hidden>
+<label for="approvedReference">Normalized player reference for administrator review</label>
+<textarea id="approvedReference" readonly></textarea>
+<div class="actions"><button type="button" class="secondary" id="copy">Copy player reference</button><button type="button" class="secondary" id="passed">Audio plays correctly</button><button type="button" class="secondary" id="failed">Audio does not play or is wrong</button></div>
+<div class="fine" id="decision" aria-live="polite"></div>
+</div>
+</div>
+<div class="card">
+<h2>Important before publishing</h2>
+<ul>
+<li><strong>A player loading is not proof that the audio works.</strong> Press Play and listen from a signed-out browser.</li>
+<li><strong>Unlisted does not mean secret after publication.</strong> Anyone viewing the catalog may be able to inspect or share the embedded source link.</li>
+<li><strong>Some Spotify and Apple Music embeds only offer limited previews</strong> or require a listener account for full playback. The site must describe what buyers can actually hear.</li>
+<li><strong>Bandcamp requires its official player reference.</strong> A regular track page address is not itself an embedded player.</li>
+<li><strong>A direct MP3 must be hosted on a permitted HTTPS source.</strong> The provider must authorize hotlinking and public previews.</li>
+<li>Rights, split-display consent, paid membership, licensing authority and buyer routing are reviewed separately from audio playback.</li>
+</ul></div>
+<div class="notice">Privacy: The pasted link is processed in this browser tab and is not saved to GitHub or our private database. When you load a player, your browser requests it from the music provider. The normalized reference can be copied for review, but this action never changes a song's status.</div>
+</main><footer><div class="wrap">Sync Opps. Ready to License Catalog | Internal playback screening | No public song listing is created here.</div></footer>
+<script>
+(function(){
+'use strict';
+const form=document.getElementById('testForm'),platform=document.getElementById('platform'),source=document.getElementById('source');
+const display=document.getElementById('display'),status=document.getElementById('status'),referenceArea=document.getElementById('referenceArea');
+const reference=document.getElementById('approvedReference'),decision=document.getElementById('decision');
+function error(msg){throw new Error(msg);}
+function urlOf(raw){
+ let u;
+ try{u=new URL(raw.trim());}catch(e){error('Enter a complete HTTPS track link or a complete official iframe code.');}
+ if(u.protocol!=='https:'||u.username||u.password||u.href.length>2500||/[<>"'\s]/.test(u.href))error('Only safe HTTPS media links are accepted.');
+ return u;
+}
+function originalReference(raw){
+ let s=raw.trim();
+ if(!s.startsWith('<'))return s;
+ if(s.length>12000)error('Embed code is too long.');
+ const d=new DOMParser().parseFromString(s,'text/html'),iframes=d.querySelectorAll('iframe');
+ if(iframes.length!==1)error('Paste a single official iframe embed code.');
+ return iframes[0].getAttribute('src')||'';
+}
+function cleanSoundcloud(u){
+ if(!['soundcloud.com','www.soundcloud.com'].includes(u.hostname.toLowerCase())||!/^\/[^/?#]+\/[^/?#]+/.test(u.pathname))error('SoundCloud needs an actual track Share link.');
+ const clean=new URL(u.origin+u.pathname);
+ const token=u.searchParams.get('secret_token');
+ if(token&&/^s-[a-z0-9_-]{4,100}$/i.test(token))clean.searchParams.set('secret_token',token);
+ return clean.href;
+}
+function compile(raw,chosen){
+ const u=urlOf(originalReference(raw)),host=u.hostname.toLowerCase(),path=u.pathname;
+ let kind=chosen;
+ if(kind==='auto'){
+  if(['soundcloud.com','www.soundcloud.com','w.soundcloud.com'].includes(host))kind='soundcloud';
+  else if(host==='open.spotify.com')kind='spotify';
+  else if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','www.youtube-nocookie.com'].includes(host))kind='youtube';
+  else if(['bandcamp.com','www.bandcamp.com'].includes(host))kind='bandcamp';
+  else if(['music.apple.com','embed.music.apple.com'].includes(host))kind='apple';
+  else if(['disco.ac','www.disco.ac'].includes(host))kind='disco';
+  else if(/\.mp3$/i.test(path))kind='mp3';
+  else error('Provider not recognized. Select the service or use an official embed code.');
+ }
+ let dest,ref,tag='iframe',height=180;
+ if(kind==='soundcloud'){
+  const embed=new URL('https://w.soundcloud.com/player/');
+  if(host==='w.soundcloud.com'&&/^\/player\/?$/.test(path)){
+   const content=urlOf(u.searchParams.get('url')||'');
+   if(['soundcloud.com','www.soundcloud.com'].includes(content.hostname.toLowerCase()))ref=cleanSoundcloud(content);
+   else if(content.hostname.toLowerCase()==='api.soundcloud.com'&&/^\/tracks\/\d+$/.test(content.pathname))ref=content.href;
+   else error('Unrecognized SoundCloud track inside the official embed.');
+  }else ref=cleanSoundcloud(u);
+  embed.searchParams.set('url',ref);embed.searchParams.set('color','#a83b06');embed.searchParams.set('show_artwork','false');
+  embed.searchParams.set('hide_related','true');embed.searchParams.set('show_comments','false');dest=embed.href;height=164;
+ }else if(kind==='spotify'){
+  if(host!=='open.spotify.com')error('Spotify must use open.spotify.com.');
+  const m=path.match(/^\/(?:embed\/)?(track|album|playlist)\/([A-Za-z0-9]{22})\/?$/);
+  if(!m)error('Use a Spotify track, album or playlist link.');
+  dest='https://open.spotify.com/embed/'+m[1]+'/'+m[2];ref=dest;height=152;
+ }else if(kind==='youtube'){
+  let id='';
+  if(host==='youtu.be')id=path.slice(1);
+  else if(['youtube.com','www.youtube.com','m.youtube.com','www.youtube-nocookie.com'].includes(host)){
+   if(path==='/watch')id=u.searchParams.get('v')||'';
+   else{const m=path.match(/^\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})\/?$/);if(m)id=m[1];}
+  }
+  if(!/^[A-Za-z0-9_-]{11}$/.test(id))error('Use a valid YouTube video or unlisted video link.');
+  dest='https://www.youtube-nocookie.com/embed/'+id+'?rel=0';ref=dest;height=215;
+ }else if(kind==='bandcamp'){
+  if(!['bandcamp.com','www.bandcamp.com'].includes(host)||!/^\/EmbeddedPlayer\//.test(path))error('Bandcamp requires its official Share/Embed player URL.');
+  dest=u.href;ref=dest;height=145;
+ }else if(kind==='apple'){
+  if(!['music.apple.com','embed.music.apple.com'].includes(host))error('Apple Music requires an official Apple Music song or embed link.');
+  dest='https://embed.music.apple.com'+path+u.search;ref=dest;height=178;
+ }else if(kind==='disco'){
+  if(!['disco.ac','www.disco.ac'].includes(host)||path==='/')error('DISCO requires an official owner-approved player URL.');
+  dest=u.href;ref=dest;height=190;
+ }else if(kind==='mp3'){
+  if(!/\.mp3$/i.test(path))error('A direct MP3 needs an HTTPS file URL with a .mp3 path.');
+  dest=u.href;ref=dest;tag='audio';
+ }else error('Choose a supported provider.');
+ return {type:kind,dest:dest,reference:ref,tag:tag,height:height};
+}
+function clearAll(){
+ source.value='';platform.value='auto';display.replaceChildren();reference.value='';decision.textContent='';referenceArea.hidden=true;
+ status.classList.remove('error');status.textContent='No track loaded.';source.focus();
+}
+form.addEventListener('submit',function(e){
+ e.preventDefault();display.replaceChildren();referenceArea.hidden=true;decision.textContent='';
+ try{
+  const info=compile(source.value,platform.value);
+  if(info.tag==='iframe'){
+   const frame=document.createElement('iframe');frame.src=info.dest;frame.title=info.type+' catalog player preflight';
+   frame.width='100%';frame.height=String(info.height);frame.loading='eager';frame.referrerPolicy='strict-origin-when-cross-origin';
+   frame.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';frame.allowFullscreen=true;display.appendChild(frame);
+  }else{
+   const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=info.dest;display.appendChild(audio);
+  }
+  reference.value=info.reference;referenceArea.hidden=false;status.classList.remove('error');
+  status.textContent='Player loaded. Now press Play and confirm the correct recording from a signed-out browser. Loading is not approval.';
+ }catch(err){status.classList.add('error');status.textContent=String(err.message||err);}
+});
+document.getElementById('clear').addEventListener('click',clearAll);
+document.getElementById('copy').addEventListener('click',async function(){
+ try{await navigator.clipboard.writeText(reference.value);decision.textContent='Reference copied. Do not publish without approval.';}
+ catch(e){reference.select();decision.textContent='Copy was blocked by your browser. Select and copy the field manually.';}
+});
+document.getElementById('passed').addEventListener('click',function(){decision.textContent='Observed: audio plays. This is a playback check only. No rights or membership approval was granted.';});
+document.getElementById('failed').addEventListener('click',function(){decision.textContent='Observed: player failed or audio mismatched. Keep this song on publication hold.';});
+})();
+</script>
+</body></html>
