@@ -4,10 +4,11 @@ Public website files for the limited **November 23, 2026** beta of the Sync Opps
 
 ## Current status
 
-**Development / prelaunch.** The website code and privacy-safe empty catalog feed are committed. No song is publicly approved or listed yet. GitHub Pages is live and serving the buyer-facing site. Advance applications for the first-40 paid-member beta are open.
+**Development / prelaunch.** The website code and fail-closed live public feed configuration are committed. No song is publicly approved or listed yet. GitHub Pages is live and serving the buyer-facing site. Advance applications for the first-40 paid-member beta are open.
 
 - `index.html`: buyer-facing searchable catalog and licensing information interface based on the owner-approved design.
-- `catalog.json`: public, approved-only feed. Currently `"songs": []`.
+- `catalog.json`: legacy empty static feed, not used by live mode. Currently `"songs": []`.
+- `feed-config.json`: live mode enabled with the standalone read-only Apps Script Web app URL; no stale fallback on feed failure.
 - Google Sheets is the **private** source of truth. Never publish the workbook, raw Tally responses, Patreon emails, contact-routing emails, private authority documentation, or admin notes.
 
 ## Live website and beta applications
@@ -33,7 +34,7 @@ The website deliberately rejects any record unless `catalogStatus === "Published
 
 Approved records may contain only consented public display data: song ID, title, artist display name, genre, mood/use tags, playback source and approved player URL, runtime, instrumental/explicit indicators, member-consented public composition/publishing/master shares and licensing restrictions, plus a **private buyer inquiry form URL** (never a raw email address). The code enforces an allowlist of supported player origins for Spotify, YouTube, Bandcamp, SoundCloud, Apple Music and DISCO, plus HTTPS-hosted MP3 audio. These players require signed-out, mobile and on-site verification individually. No full-length playback guarantee is implied.
 
-**Important:** Until an authenticated publication/synchronization bridge has been implemented, changes to private Sheets do **not** automatically update the GitHub feed. A paused or withdrawn song must be removed from the public `catalog.json` feed as well as the private database before declaring public removal complete. Do not publish any real track until that workflow is tested.
+**Important:** Live mode now reads a read-only, approved-only Apps Script feed from the private Sheet. Paused or withdrawn songs should be excluded on new page loads. This has not yet been proven with a real approved-to-withdrawn track and external playback. Keep all real songs hidden until that end-to-end test and buyer routing are verified.
 
 ## Beta conditions
 
