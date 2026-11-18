@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "mode": "static",
+  "endpoint": "",
+  "note": "Temporary empty approved catalog; switch to live only after safe Apps Script JSONP endpoint is deployed and verified."
+}
