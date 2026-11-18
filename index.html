@@ -121,7 +121,12 @@ async function readLiveFeed(endpoint){
     document.head.append(script);
   });
 }
+let lastCatalogRefreshAt=0;
+let catalogRefreshInFlight=false;
 async function loadApprovedCatalog(){
+  if(catalogRefreshInFlight)return;
+  catalogRefreshInFlight=true;
+  lastCatalogRefreshAt=Date.now();
   try{
     const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
     if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
@@ -138,6 +143,7 @@ async function loadApprovedCatalog(){
     }else throw Error('Invalid feed mode');
     SONGS=(Array.isArray(obj?.songs)?obj.songs:[]).map(normalizeSong).filter(Boolean);
   }catch(e){ SONGS=[]; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
+  finally { catalogRefreshInFlight=false; }
   populateFilters(); render();
 }
 
@@ -146,7 +152,16 @@ let restoreFocus = null;
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tag=x=>`<span class="tag">${escapeHtml(x)}</span>`;
-function populateFilters(){for(const id of ['genreInput','moodInput','useInput','sourceInput']) { while($(id).options.length>1) $(id).remove(1); } for(const [target,get] of [['genreInput',s=>[s.genre]],['moodInput',s=>s.moods],['useInput',s=>s.uses],['sourceInput',s=>[s.source]]]){let arr=[...new Set(SONGS.flatMap(get))].sort((a,b)=>a.localeCompare(b));for(const v of arr){const o=document.createElement('option');o.value=v;o.textContent=v;$(target).append(o);}}}
+function populateFilters(){
+  const ids=['genreInput','moodInput','useInput','sourceInput'];
+  const selected=Object.fromEntries(ids.map(id=>[id,$(id).value]));
+  for(const id of ids){while($(id).options.length>1)$(id).remove(1);}
+  for(const [target,get] of [['genreInput',s=>[s.genre]],['moodInput',s=>s.moods],['useInput',s=>s.uses],['sourceInput',s=>[s.source]]]){
+    const arr=[...new Set(SONGS.flatMap(get))].sort((a,b)=>a.localeCompare(b));
+    for(const v of arr){const o=document.createElement('option');o.value=v;o.textContent=v;$(target).append(o);}
+  }
+  for(const id of ids){if([...$(id).options].some(o=>o.value===selected[id]))$(id).value=selected[id];}
+}
 function currentMatches(){const q=$('searchInput').value.toLowerCase().trim(),g=$('genreInput').value,m=$('moodInput').value,u=$('useInput').value,s=$('sourceInput').value;return SONGS.filter(x=>(!g||x.genre===g)&&(!m||x.moods.includes(m))&&(!u||x.uses.includes(u))&&(!s||x.source===s)&&(!q||[x.title,x.artist,x.genre,x.source,x.notes,...x.moods,...x.uses].join(' ').toLowerCase().includes(q)));}
 function cardHtml(s){return `<article class="song-card" aria-label="${escapeHtml(s.title)} by ${escapeHtml(s.artist)}"><div class="card-head"><div class="art ${escapeHtml(s.art)}"><span class="art-symbol" aria-hidden="true">♫</span></div><div class="trackmeta"><h3 title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3><p class="artist">by ${escapeHtml(s.artist)}</p><p class="genre">${escapeHtml(s.genre)} · ${escapeHtml(s.duration)}</p></div></div><div class="provider"><span class="source-pill">◉ ${escapeHtml(s.source)}</span><span class="provider-note">${escapeHtml(s.id)}</span></div><div class="listen-area"><div class="listen-row"><button class="play-btn" data-play="${escapeHtml(s.id)}" aria-label="${activeId===s.id?'Close':'Open'} ${escapeHtml(s.source)} player for ${escapeHtml(s.title)}" aria-expanded="${activeId===s.id}">${activeId===s.id?'×':'▶'}</button><div class="wave" aria-hidden="true"></div><span class="listen-label">${activeId===s.id?'Close player':'Listen here'}</span></div>${activeId===s.id?`<div class="embed-holder" id="playerMount"></div>`:''}</div><div class="tags"><div class="tagline-row"><span class="tag-title">Mood:</span>${s.moods.map(tag).join('')}</div><div class="tagline-row"><span class="tag-title">Great For:</span>${s.uses.map(tag).join('')}</div></div><div class="actions"><button class="btn btn-primary" data-info="${escapeHtml(s.id)}">Licensing Info</button><button class="btn btn-outline" data-contact="${escapeHtml(s.id)}">Contact Artist</button></div><div class="card-foot">Rights details are member supplied; confirm all permissions with the relevant rights holders.</div></article>`;}
 function render(){const arr=currentMatches();$('songGrid').innerHTML=arr.map(cardHtml).join('');$('resultCount').textContent=`${arr.length} of ${SONGS.length} approved tracks`;$('emptyState').hidden=arr.length!==0;const em=$('emptyDescription');if(em)em.textContent=SONGS.length?'Try a different filter or search term.':'The first beta member tracks will appear here after eligibility and licensing-information review.';if(activeId && arr.some(x=>x.id===activeId)){const song=arr.find(x=>x.id===activeId);insertPlayer(song);}else activeId=null;}
@@ -178,6 +193,13 @@ $('songGrid').addEventListener('click',e=>{let t=e.target.closest('[data-play],[
 $('modalContent').addEventListener('click',async e=>{const c=e.target.closest('[data-copy]'),t=e.target.closest('[data-modal-contact]');if(t){const s=SONGS.find(x=>x.id===t.dataset.modalContact);if(s)contact(s);}else if(c){const s=SONGS.find(x=>x.id===c.dataset.copy);if(s){try{await navigator.clipboard.writeText(inquiryText(s));toast('Inquiry template copied.');}catch{toast('Copy unavailable in this browser. Select the template text manually.');}}}else if(e.target.id==='modalDone')closeModal();});
 $('modalClose').addEventListener('click',closeModal);$('modalLayer').addEventListener('click',e=>{if(e.target.id==='modalLayer')closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modalLayer').hidden)closeModal();});
 for(const id of ['searchInput','genreInput','moodInput','useInput','sourceInput'])$(id).addEventListener(id==='searchInput'?'input':'change',()=>{activeId=null;render();});$('resetFilters').addEventListener('click',reset);$('emptyReset').addEventListener('click',reset);$('mobileCatalog').addEventListener('click',()=>location.hash='#catalog');
+// Recheck the live feed when a visitor returns to a tab. This helps suppress
+// withdrawn tracks without constant polling or a stale JSON fallback.
+function refreshCatalogOnReturn(){
+  if(!document.hidden && Date.now()-lastCatalogRefreshAt>60000)loadApprovedCatalog();
+}
+document.addEventListener('visibilitychange',refreshCatalogOnReturn);
+window.addEventListener('focus',refreshCatalogOnReturn);
 loadApprovedCatalog();
 </script>
 </body>
