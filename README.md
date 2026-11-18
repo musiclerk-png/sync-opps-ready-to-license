@@ -46,7 +46,7 @@ Approved records may contain only consented public display data: song ID, title,
 
 - Member song submission: https://tally.so/r/peo0gV (private eligibility and rights review)
 - Song removal requests: https://tally.so/r/e5rybE (email-confirmed removal workflow)
-- Buyer licensing inquiry: Tally form jeoYaE remains draft pending routing; DO NOT publicize yet.
+- Buyer licensing inquiry: https://tally.so/r/jeoYaE is published, but automatic contact routing is not connected or tested; DO NOT link it to any real song until delivery is verified.
 
 ## Development management
 
