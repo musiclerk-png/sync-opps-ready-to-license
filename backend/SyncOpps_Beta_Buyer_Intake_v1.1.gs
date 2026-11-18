@@ -419,10 +419,12 @@ function soBBRightsAllowedV11_(table,songId,creditColumn,percentageColumn,staged
   return privatePairs.every((p,i)=>p[0]===publicPairs[i][0]&&Math.abs(p[1]-publicPairs[i][1])<0.01);
 }
 function soBBPlayerAllowedV11_(source,stream){
-  let u;
-  try{u=new URL(String(stream));}catch(_){return false;}
-  if(u.protocol!=='https:'||u.username||u.password)return false;
-  const host=u.hostname.toLowerCase(),path=u.pathname;
+  // Apps Script V8 is not a browser. Do not depend on the browser URL global.
+  const raw=String(stream||'').trim();
+  if(/[\s<>\"']/.test(raw))return false;
+  const match=raw.match(/^https:\/\/([^\/?#@:\s]+)(?::443)?(\/[^?#\s<>\"']*)?(?:[?#][^\s<>\"']*)?$/i);
+  if(!match)return false;
+  const host=match[1].toLowerCase(),path=match[2]||'/';
   if(source.includes('soundcloud'))return ['soundcloud.com','www.soundcloud.com'].includes(host);
   if(source.includes('spotify'))return host==='open.spotify.com'&&/\/embed\/(track|album|playlist)\//i.test(path);
   if(source.includes('youtube')||source.includes('you tube'))return ['www.youtube.com','www.youtube-nocookie.com'].includes(host)&&/\/embed\//i.test(path);
