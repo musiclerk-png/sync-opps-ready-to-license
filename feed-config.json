@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "mode": "static",
-  "endpoint": "",
-  "note": "Temporary empty approved catalog; switch to live only after safe Apps Script JSONP endpoint is deployed and verified."
+  "mode": "live",
+  "endpoint": "https://script.google.com/macros/s/AKfycbxnpxw7Q1N9FvjKOdoLzfDDN_A4J2jzkiPbIB84Hvw473BQXcpRqKFdXGy912HVGjK9Pg/exec",
+  "note": "Live read-only feed. No static fallback on error. All records must pass private publication gates."
 }
