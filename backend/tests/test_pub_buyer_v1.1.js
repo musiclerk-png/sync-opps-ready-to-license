@@ -1,8 +1,14 @@
 const vm=require('node:vm');
 const fs=require('node:fs');
+const path=require('node:path');
 const assert=require('node:assert/strict');
-const publicCode=fs.readFileSync('/mnt/data/syncopps_qa/SyncOpps_PublicCatalogFeed_v1.1.gs','utf8');
-const buyerCode=fs.readFileSync('/mnt/data/syncopps_qa/SyncOpps_Beta_Buyer_Intake_v1.1.gs','utf8');
+const sourceFile=name=>{
+  const local=path.join(__dirname,name);
+  const parent=path.join(__dirname,'..',name);
+  return fs.readFileSync(fs.existsSync(local)?local:parent,'utf8');
+};
+const publicCode=sourceFile('SyncOpps_PublicCatalogFeed_v1.1.gs');
+const buyerCode=sourceFile('SyncOpps_Beta_Buyer_Intake_v1.1.gs');
 let data={};
 const PRIVATE_SHEET_ID='TEST_SHEET_ID_STRING_LONG_ENOUGH_TO_PASS';
 const pubCtx=vm.createContext({
