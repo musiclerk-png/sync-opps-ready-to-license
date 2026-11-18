@@ -68,7 +68,7 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
 /* Catalog records are public, independently approved data only. Never publish the private Sheet. */
 let SONGS = [];
 const TRUSTED_IFRAMES = {
-  soundcloud:['w.soundcloud.com'], spotify:['open.spotify.com'],
+  soundcloud:['soundcloud.com','www.soundcloud.com','w.soundcloud.com'], spotify:['open.spotify.com'],
   youtube:['www.youtube.com','www.youtube-nocookie.com'],
   bandcamp:['bandcamp.com','www.bandcamp.com'],
   apple:['embed.music.apple.com','music.apple.com'],
@@ -99,14 +99,45 @@ function normalizeSong(x) {
     id:x.id,title:clean(x.title),artist:clean(x.artist),genre:clean(x.genre),moods:Array.isArray(x.moods)?x.moods.slice(0,3).map(clean):[],uses:Array.isArray(x.uses)?x.uses.slice(0,5).map(clean):[],source:clean(x.source),duration:clean(x.duration),art:'orange',instrumental:clean(x.instrumental),explicit:clean(x.explicit),year:clean(x.year),isrc:clean(x.isrc),iswc:clean(x.iswc),notes:clean(x.notes),player:{type,url}, owners:{writers:shares('writers'),publishers:shares('publishers'),master:shares('master'),pro:clean(owners.pro),clearance:clean(owners.clearance)},buyerInquiryUrl:safeUrl(x.buyerInquiryUrl||'','mp3')||''
   };
 }
+async function readLiveFeed(endpoint){
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint))
+    throw Error('Public feed endpoint is not allowed');
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    let finished=false;
+    function done(error,data){
+      if(finished)return;
+      finished=true;
+      clearTimeout(timeout);
+      script.remove();
+      delete window.syncOppsApprovedFeedV1;
+      if(error)reject(error);else resolve(data);
+    }
+    const timeout=setTimeout(()=>done(Error('Public feed did not respond')),10000);
+    window.syncOppsApprovedFeedV1=data=>done(null,data);
+    script.onerror=()=>done(Error('Public feed request failed'));
+    script.src=endpoint+'?v='+Date.now();
+    script.referrerPolicy='no-referrer';
+    document.head.append(script);
+  });
+}
 async function loadApprovedCatalog(){
   try{
-    const rsp=await fetch('./catalog.json',{cache:'no-store'});
-    if(!rsp.ok)throw Error('Catalog unavailable');
-    const obj=await rsp.json();
-    const records=Array.isArray(obj.songs)?obj.songs:[];
-    SONGS=records.map(normalizeSong).filter(Boolean);
-  }catch(e){ SONGS=[]; console.warn('Approved catalog not available:',e.message); }
+    const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
+    if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
+    const cfg=await cfgResponse.json();
+    let obj;
+    if(cfg.mode==='live'){
+      // No fallback to cached/static songs on failure: this prevents withdrawn songs
+      // from reappearing when the live membership/rights feed is unavailable.
+      obj=await readLiveFeed(cfg.endpoint||'');
+    }else if(cfg.mode==='static'){
+      const rsp=await fetch('./catalog.json',{cache:'no-store'});
+      if(!rsp.ok)throw Error('Static catalog unavailable');
+      obj=await rsp.json();
+    }else throw Error('Invalid feed mode');
+    SONGS=(Array.isArray(obj?.songs)?obj.songs:[]).map(normalizeSong).filter(Boolean);
+  }catch(e){ SONGS=[]; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
   populateFilters(); render();
 }
 
