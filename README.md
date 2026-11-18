@@ -16,7 +16,8 @@ Public website files for the limited **November 23, 2026** beta of the Sync Opps
 
 - Live website: https://musiclerk-png.github.io/sync-opps-ready-to-license/
 - Dedicated First 40 beta enrollment landing page: https://musiclerk-png.github.io/sync-opps-ready-to-license/beta/ (Patreon join + application CTAs).
-- Browser-only SoundCloud QA tool: https://musiclerk-png.github.io/sync-opps-ready-to-license/qa/soundcloud-player.html (unlinked from navigation). Test private track playback here **without** adding unapproved music or secret SoundCloud URLs to the repository.
+- **Preferred browser-only player QA:** https://musiclerk-png.github.io/sync-opps-ready-to-license/qa/catalog-player.html . Supports SoundCloud, Spotify, YouTube, Bandcamp, Apple Music, DISCO and direct MP3. Accepts official iframe embeds or share links where supported; validates the player without adding unapproved music to the repository. An authorized, publicly playable preview may replace a non-embeddable private source.
+- Legacy SoundCloud-only player QA remains at https://musiclerk-png.github.io/sync-opps-ready-to-license/qa/soundcloud-player.html . Both QA utilities remain outside the public site navigation.
 - First 40 paid-member beta applications: https://tally.so/r/YjGvPd
 - Existing paid members and new paid Patreon members may apply now. Beta begins November 23, 2026.
 - Applications require Patreon eligibility and available capacity confirmation; application alone is not an accepted slot.
