@@ -59,6 +59,17 @@ Approved records may contain only consented public display data: song ID, title,
 - The new private `Beta Applications (PRIVATE)` tab collects applications; **Beta 40** remains empty until authenticated owner approval and paid Patreon membership verification.
 - This standalone script uses Tally's free API. It still requires one new Apps Script installation plus a private Tally API key stored in Script Properties. No live Tally API processing or buyer email delivery has been verified yet.
 
+## Pending launch-safety upgrade v1.1 (not installed)
+
+A complete replacement package is prepared in the existing DEV Drive folder and GitHub. The **current running Apps Script projects are still v1.0**, until the owner installs this update:
+
+- [Public Catalog Feed v1.1](backend/SyncOpps_PublicCatalogFeed_v1.1.gs)
+- [Beta + Buyer Intake v1.1](backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs)
+- [Single installation and rollback guide](backend/README_Safety_Upgrade_v1.1.md)
+- [20-case offline safety test](backend/tests/test_pub_buyer_v1.1.js)
+
+The prepared v1.1 release enforces first-40 accepted beta slots until Jan 5, 2027, independently verifies each rights-owner row's consent to show names and shares, and matches public disclosures against approved underlying splits. It also blocks buyer routing on the same criteria. It must be installed in the **two existing** Apps Script projects before a real music title is published. The earlier v1.0 sources remain untouched for rollback. Do not change any private rights or member verification statuses just to make test songs appear.
+
 ## Development management
 
 The master project development record is held in the private Google Doc `Sync Opps. Ready to License | Ongoing Development Document`. Site source is managed directly through the connected GitHub integration, without paid browser automation. Changes should be reviewed in small batches and published only when safe.
