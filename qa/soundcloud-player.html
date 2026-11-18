@@ -20,7 +20,7 @@ p{color:var(--muted)}
 .panel{border:1px solid var(--line);border-radius:17px;background:#fff;padding:24px;margin:22px 0;box-shadow:0 4px 22px #6e3c1510}
 label{display:block;font-weight:800;margin:0 0 7px}input{width:100%;padding:14px 15px;border:1.5px solid #cfb9a7;border-radius:9px;font-size:16px;background:#fffcf9;color:var(--ink)}
 input:focus{outline:3px solid #f9cc9a;outline-offset:2px}
-small{color:var(--muted);font-size:13px}
+small{color:var(--muted);font-size:13px}textarea{width:100%;min-height:105px;padding:13px;border:1.5px solid #cfb9a7;border-radius:9px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical;background:#fffcf9;color:var(--ink)}textarea:focus{outline:3px solid #f9cc9a;outline-offset:2px}.or{font-size:12px;font-weight:900;color:#88461f;letter-spacing:.1em;margin:16px 0 12px;text-transform:uppercase}
 .buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:17px}
 button{background:var(--rust);color:white;border:2px solid var(--rust);font-size:14px;font-weight:800;border-radius:28px;padding:12px 20px;cursor:pointer}
 button.secondary{background:white;color:var(--rust)}
@@ -47,8 +47,12 @@ footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(
 <div class="panel">
 <form id="checkForm">
 <label for="track">SoundCloud track URL</label>
-<input id="track" type="url" placeholder="https://soundcloud.com/artist/track/s-secret-token" autocomplete="off" autocapitalize="off" spellcheck="false" required>
-<small>Paste the track's Share link from the private Google Sheet. Do not paste a password, email address or a licensing document.</small>
+<input id="track" type="url" placeholder="https://soundcloud.com/artist/track/s-secret-token" autocomplete="off" autocapitalize="off" spellcheck="false">
+<small>Try the track's private Share link. Tracking parameters will be removed but its private token is retained.</small>
+<div class="or">Or, recommended if a private song does not load</div>
+<label for="officialEmbed">Official SoundCloud embed code or player URL</label>
+<textarea id="officialEmbed" placeholder="On SoundCloud: open your track, click Share, choose Embed, and copy the complete iframe code from Code &amp; preview." autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+<small>This tests the precise private-track reference SoundCloud embeds in its official player. The pasted code runs nowhere: we extract only a validated SoundCloud player URL.</small>
 <div class="buttons">
 <button type="submit">Load SoundCloud player</button>
 <button class="secondary" type="button" id="clear">Clear this test</button>
@@ -68,12 +72,12 @@ footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(
 <h2>What to check</h2>
 <ol>
 <li>Open this page in a signed-out or Incognito browser window.</li>
-<li>Paste the SoundCloud Share link for the actual song from its private record.</li>
+<li>Try the private Share link. If the player rejects it, open the track on SoundCloud, choose <strong>Share → Embed</strong>, and paste SoundCloud's official embed code into the second field instead.</li>
 <li>Confirm the player shows the expected title and artist.</li>
 <li>Press Play. Confirm the recording plays for more than a few seconds.</li>
-<li>If SoundCloud reports that the track is unavailable, check SoundCloud's <strong>Share → Embed</strong> permissions for that recording.</li>
+<li>If the Embed tab or code is unavailable, check the track's <strong>Permissions → Display embed code</strong> settings. A private track does not necessarily have to be made public.</li>
 </ol>
-<p class="privacy"><strong>Privacy:</strong> This tool does not store your pasted URL, transmit it to the catalog database, add it to the address bar or send it to GitHub. Once you load the player, your browser passes the SoundCloud URL to SoundCloud to play the track. Anyone obtaining an unlisted track's secret link may be able to listen, so do not use the source link in a public catalog until authorized.</p>
+<p class="privacy"><strong>Privacy:</strong> This tool does not store pasted Share links or iframe codes, transmit them to the catalog database, add them to the address bar or send them to GitHub. Once you load the player, your browser passes the validated source reference to SoundCloud to play the track. Anyone obtaining an unlisted track's secret link may be able to listen, so do not use the source link in a public catalog until authorized.</p>
 </div>
 </main>
 <footer><div class="wrap">Sync Opps. Ready to License Catalog | Internal quality assurance utility. Player results are manually confirmed, not automatically certified.</div></footer>
@@ -81,38 +85,83 @@ footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(
 (function(){
 "use strict";
 const input=document.getElementById("track");
+const officialEmbed=document.getElementById("officialEmbed");
 const form=document.getElementById("checkForm");
 const container=document.getElementById("embedWrap");
 const status=document.getElementById("status");
 const section=document.getElementById("checkResult");
 const result=document.getElementById("result");
 function reset(){
- container.replaceChildren();input.value="";status.classList.remove("error");status.textContent="No track loaded.";
+ container.replaceChildren();input.value="";officialEmbed.value="";status.classList.remove("error");status.textContent="No track loaded.";
  section.hidden=true;result.textContent="";input.focus();
 }
 function soundcloudUrl(value){
  let url;
- try{url=new URL(value.trim());}catch(e){throw new Error("Enter a complete HTTPS SoundCloud Share link.");}
+ try{url=new URL(value.trim());}catch(e){throw new Error("Enter a complete HTTPS SoundCloud Share link or use the official embed field.");}
  if(url.protocol!=="https:"||url.username||url.password||!["soundcloud.com","www.soundcloud.com"].includes(url.hostname.toLowerCase()))
   throw new Error("Use an official HTTPS soundcloud.com track Share link.");
- if(!/^\/[^/?#]+\/[^/?#]+/.test(url.pathname)||url.pathname.length>500)
+ if(!/^\\/[^/?#]+\\/[^/?#]+/.test(url.pathname)||url.pathname.length>500)
   throw new Error("Paste a direct SoundCloud track link, not an artist homepage.");
  if(url.href.length>2100||/[<>"']/.test(url.href))throw new Error("Invalid track URL.");
- return url.href;
+ // 'si' and marketing parameters are unnecessary in an embed and may interfere
+ // with private-track resolution. Preserve the privacy token, in the path or query.
+ const clean=new URL(url.origin+url.pathname);
+ const token=url.searchParams.get("secret_token");
+ if(token && /^s-[a-z0-9_-]{4,100}$/i.test(token))clean.searchParams.set("secret_token",token);
+ return clean.href;
+}
+function officialSoundCloudUrl(code){
+ const raw=code.trim();
+ if(!raw)throw new Error("Paste the SoundCloud iframe embed code or its HTTPS player URL.");
+ let src=raw;
+ if(raw.startsWith("<")){
+  const documentFragment=new DOMParser().parseFromString(raw,"text/html");
+  const frames=[...documentFragment.querySelectorAll("iframe")];
+  if(frames.length!==1)throw new Error("Paste one complete official SoundCloud iframe embed code.");
+  src=frames[0].getAttribute("src")||"";
+ }
+ let url;
+ try{url=new URL(src);}catch(e){throw new Error("Unable to find a valid SoundCloud player URL in that embed code.");}
+ if(url.protocol!=="https:"||url.username||url.password||url.hostname!=="w.soundcloud.com"||!/^\\/player\\/?$/.test(url.pathname))
+  throw new Error("Only SoundCloud's official HTTPS player is accepted.");
+ const trackRef=url.searchParams.get("url");
+ if(!trackRef)throw new Error("The SoundCloud player code has no track reference.");
+ let track;
+ try{track=new URL(trackRef);}catch(e){throw new Error("The embed's SoundCloud track reference is invalid.");}
+ if(track.protocol!=="https:"||track.username||track.password||track.href.length>2100)throw new Error("Unsafe or invalid track reference.");
+ const host=track.hostname.toLowerCase();
+ if(host==="soundcloud.com"||host==="www.soundcloud.com"){
+  if(!/^\\/[^/?#]+\\/[^/?#]+/.test(track.pathname))throw new Error("Not a SoundCloud track reference.");
+ }else if(host==="api.soundcloud.com"){
+  if(!/^\\/tracks\\/\\d+$/.test(track.pathname))throw new Error("Not a SoundCloud track reference.");
+ }else throw new Error("Unrecognized SoundCloud reference host.");
+ const embed=new URL("https://w.soundcloud.com/player/");
+ embed.searchParams.set("url",track.href);
+ embed.searchParams.set("color","#a83b06");
+ embed.searchParams.set("show_artwork","false");
+ embed.searchParams.set("hide_related","true");
+ embed.searchParams.set("show_comments","false");
+ return embed.href;
 }
 form.addEventListener("submit",function(event){
  event.preventDefault();container.replaceChildren();section.hidden=true;result.textContent="";
  try{
-  const source=soundcloudUrl(input.value);
-  const embed=new URL("https://w.soundcloud.com/player/");
-  embed.searchParams.set("url",source);
-  embed.searchParams.set("color","#a83b06");
-  embed.searchParams.set("show_artwork","false");
-  embed.searchParams.set("hide_related","true");
-  embed.searchParams.set("show_comments","false");
+  let embedUrl;
+  if(officialEmbed.value.trim()){
+   embedUrl=officialSoundCloudUrl(officialEmbed.value);
+  }else{
+   const source=soundcloudUrl(input.value);
+   const embed=new URL("https://w.soundcloud.com/player/");
+   embed.searchParams.set("url",source);
+   embed.searchParams.set("color","#a83b06");
+   embed.searchParams.set("show_artwork","false");
+   embed.searchParams.set("hide_related","true");
+   embed.searchParams.set("show_comments","false");
+   embedUrl=embed.href;
+  }
   const frame=document.createElement("iframe");
   frame.title="SoundCloud track playback check";
-  frame.src=embed.href;
+  frame.src=embedUrl;
   frame.height="166";
   frame.width="100%";
   frame.loading="eager";
@@ -121,7 +170,7 @@ form.addEventListener("submit",function(event){
   container.append(frame);
   section.hidden=false;
   status.classList.remove("error");
-  status.textContent="Player loaded. Confirm the displayed track and press Play. Loading does not prove audio works.";
+  status.textContent="SoundCloud player loaded. Confirm the displayed track and press Play; loading alone does not prove audio works.";
  }catch(error){status.classList.add("error");status.textContent=error.message;}
 });
 document.getElementById("clear").addEventListener("click",reset);
