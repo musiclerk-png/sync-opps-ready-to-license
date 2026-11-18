@@ -1,6 +1,6 @@
 # Sync Opps. Public Catalog Feed Bridge v1.0
 
-**Development state: source prepared; NOT installed, deployed, or connected to the live site.**
+**Development state: source installed, read-only dry run passed, public /exec URL provided, GitHub Pages live mode configured. Live web response and a real song withdrawal still require end-to-end verification.**
 
 This is a deliberately read-only Google Apps Script Web app. It solves the main drawback of storing real song data in GitHub's static `catalog.json`: the public website can read the PRIVATE Google Sheets database through a strictly whitelisted, approved-only response and automatically hide Paused/Withdrawn tracks for **new requests**, without needing a GitHub update after every change.
 
@@ -29,7 +29,7 @@ A song is returned only when ALL of the following are true:
 - Player URL matches a supported HTTPS provider embed. Every real provider must pass a signed-out test.
 - Content filtered out by any gate is **never** included in the output. An error yields an empty feed.
 
-The website stays in **static mode** with `catalog.json` containing zero songs until this bridge is deployed. In **live mode**, if the endpoint is unavailable, the website fails closed and shows zero songs; it **does not** fall back to a stale public JSON file.
+The website is now set to **live mode** in `feed-config.json`. The earlier static `catalog.json` remains empty and is not a fallback. In **live mode**, if the endpoint is unavailable, the website fails closed and shows zero songs; it **does not** fall back to a stale public JSON file.
 
 A confirmed withdrawal updates the private Songs status. On subsequent requests, the feed omits that song immediately; no separate GitHub publication job is needed. Already-open browser sessions may continue to show previously loaded data until refreshed; members' underlying music providers remain independently controlled.
 
