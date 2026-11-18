@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#a6400a">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>SoundCloud Playback Check | Sync Opps. Catalog QA</title>
+<style>
+:root{--ink:#251912;--muted:#705548;--rust:#a84109;--line:#ecd7c7;--bg:#fff8f2}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font:16px/1.55 system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:var(--ink)}
+header{background:#281d16;color:#fff4ed;padding:18px 22px}header .wrap{display:flex;justify-content:space-between;gap:14px;align-items:center}
+.wrap{max-width:850px;margin:auto;padding-left:24px;padding-right:24px}
+header strong{font-size:19px}header a{color:#ffe0c5;font-size:13px}
+main{padding-top:42px;padding-bottom:70px}
+.kicker{color:#99400e;text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:850}
+h1{font-size:clamp(30px,5vw,46px);letter-spacing:-.045em;line-height:1.12;margin:10px 0 18px}h2{font-size:21px;margin:0 0 12px}
+p{color:var(--muted)}
+.panel{border:1px solid var(--line);border-radius:17px;background:#fff;padding:24px;margin:22px 0;box-shadow:0 4px 22px #6e3c1510}
+label{display:block;font-weight:800;margin:0 0 7px}input{width:100%;padding:14px 15px;border:1.5px solid #cfb9a7;border-radius:9px;font-size:16px;background:#fffcf9;color:var(--ink)}
+input:focus{outline:3px solid #f9cc9a;outline-offset:2px}
+small{color:var(--muted);font-size:13px}
+.buttons{display:flex;flex-wrap:wrap;gap:10px;margin-top:17px}
+button{background:var(--rust);color:white;border:2px solid var(--rust);font-size:14px;font-weight:800;border-radius:28px;padding:12px 20px;cursor:pointer}
+button.secondary{background:white;color:var(--rust)}
+button:focus-visible{outline:3px solid #9f490e;outline-offset:4px}
+#status{margin:16px 0 0;padding:10px 13px;background:#fff3e9;color:#6e3d21;border-left:3px solid #d86b29;border-radius:5px;min-height:42px}
+#status.error{border-color:#aa3232;background:#fff0f0;color:#8a2020}
+#embedWrap{margin:15px 0 0}
+#embedWrap iframe{display:block;width:100%;height:166px;border:0;border-radius:9px}
+.privacy{font-size:13px;padding:12px 14px;background:#f8efe7;border-radius:8px}
+ol{padding-left:21px}li{margin-bottom:9px}
+.check{margin-top:19px;border-top:1px solid var(--line);padding-top:16px}
+.check button{margin:5px 6px 5px 0}
+#result{font-weight:750;min-height:26px;color:#6b3a23}
+footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+@media(max-width:520px){.wrap{padding:0 17px}.panel{padding:18px}.buttons button{width:100%}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><strong>Sync Opps. <span style="font-weight:500;font-style:italic">Catalog QA</span></strong><a href="../">Back to catalog</a></div></header>
+<main class="wrap">
+<div class="kicker">Private-data-safe browser tool</div>
+<h1>Check a SoundCloud track before publication</h1>
+<p>Use this page to test how an owner-provided SoundCloud track, including an unlisted track, plays in the same embedded player used by the catalog. This page does not approve, publish or change any music.</p>
+<div class="panel">
+<form id="checkForm">
+<label for="track">SoundCloud track URL</label>
+<input id="track" type="url" placeholder="https://soundcloud.com/artist/track/s-secret-token" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+<small>Paste the track's Share link from the private Google Sheet. Do not paste a password, email address or a licensing document.</small>
+<div class="buttons">
+<button type="submit">Load SoundCloud player</button>
+<button class="secondary" type="button" id="clear">Clear this test</button>
+</div>
+</form>
+<div role="status" aria-live="polite" id="status">No track loaded.</div>
+<div id="embedWrap"></div>
+<div class="check" id="checkResult" hidden>
+<h2>Record your observation</h2>
+<p>Press Play in the player. Then use the result below for your private publication review. Clicking a result does not update the catalog.</p>
+<button type="button" id="passed">Audio plays correctly</button>
+<button type="button" id="failed" class="secondary">Audio fails or shows wrong track</button>
+<p id="result" role="status" aria-live="polite"></p>
+</div>
+</div>
+<div class="panel">
+<h2>What to check</h2>
+<ol>
+<li>Open this page in a signed-out or Incognito browser window.</li>
+<li>Paste the SoundCloud Share link for the actual song from its private record.</li>
+<li>Confirm the player shows the expected title and artist.</li>
+<li>Press Play. Confirm the recording plays for more than a few seconds.</li>
+<li>If SoundCloud reports that the track is unavailable, check SoundCloud's <strong>Share → Embed</strong> permissions for that recording.</li>
+</ol>
+<p class="privacy"><strong>Privacy:</strong> This tool does not store your pasted URL, transmit it to the catalog database, add it to the address bar or send it to GitHub. Once you load the player, your browser passes the SoundCloud URL to SoundCloud to play the track. Anyone obtaining an unlisted track's secret link may be able to listen, so do not use the source link in a public catalog until authorized.</p>
+</div>
+</main>
+<footer><div class="wrap">Sync Opps. Ready to License Catalog | Internal quality assurance utility. Player results are manually confirmed, not automatically certified.</div></footer>
+<script>
+(function(){
+"use strict";
+const input=document.getElementById("track");
+const form=document.getElementById("checkForm");
+const container=document.getElementById("embedWrap");
+const status=document.getElementById("status");
+const section=document.getElementById("checkResult");
+const result=document.getElementById("result");
+function reset(){
+ container.replaceChildren();input.value="";status.classList.remove("error");status.textContent="No track loaded.";
+ section.hidden=true;result.textContent="";input.focus();
+}
+function soundcloudUrl(value){
+ let url;
+ try{url=new URL(value.trim());}catch(e){throw new Error("Enter a complete HTTPS SoundCloud Share link.");}
+ if(url.protocol!=="https:"||url.username||url.password||!["soundcloud.com","www.soundcloud.com"].includes(url.hostname.toLowerCase()))
+  throw new Error("Use an official HTTPS soundcloud.com track Share link.");
+ if(!/^\/[^/?#]+\/[^/?#]+/.test(url.pathname)||url.pathname.length>500)
+  throw new Error("Paste a direct SoundCloud track link, not an artist homepage.");
+ if(url.href.length>2100||/[<>"']/.test(url.href))throw new Error("Invalid track URL.");
+ return url.href;
+}
+form.addEventListener("submit",function(event){
+ event.preventDefault();container.replaceChildren();section.hidden=true;result.textContent="";
+ try{
+  const source=soundcloudUrl(input.value);
+  const embed=new URL("https://w.soundcloud.com/player/");
+  embed.searchParams.set("url",source);
+  embed.searchParams.set("color","#a83b06");
+  embed.searchParams.set("show_artwork","false");
+  embed.searchParams.set("hide_related","true");
+  embed.searchParams.set("show_comments","false");
+  const frame=document.createElement("iframe");
+  frame.title="SoundCloud track playback check";
+  frame.src=embed.href;
+  frame.height="166";
+  frame.width="100%";
+  frame.loading="eager";
+  frame.referrerPolicy="strict-origin-when-cross-origin";
+  frame.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";
+  container.append(frame);
+  section.hidden=false;
+  status.classList.remove("error");
+  status.textContent="Player loaded. Confirm the displayed track and press Play. Loading does not prove audio works.";
+ }catch(error){status.classList.add("error");status.textContent=error.message;}
+});
+document.getElementById("clear").addEventListener("click",reset);
+document.getElementById("passed").addEventListener("click",function(){
+ result.textContent="Observed: correct track loaded and played. Still requires rights, membership and approval checks.";
+});
+document.getElementById("failed").addEventListener("click",function(){
+ result.textContent="Observed: player did not play correctly. Publication remains on hold.";
+});
+})();
+</script>
+</body>
+</html>
