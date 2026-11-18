@@ -35,7 +35,7 @@ A confirmed withdrawal updates the private Songs status. On subsequent requests,
 
 ## Important remaining work
 
-- Buyer Tally form `jeoYaE` is still a draft. The private inquiry receiving and routing path needs completing before publishing real music.
+- Buyer Tally form `jeoYaE` is published, but the private inquiry receiving and routing path still needs completing before publishing real music.
 - The Google Song Removal processor has already queued one test withdrawal and sent an email for identity verification; the test song remains Hidden until confirmation is clicked.
 - Static GitHub Pages file publication and the site design are live, but real-song source playback is not certified.
 - This bridge provides no administrative editing API and does not create an Apps Script source-code development bridge. Direct programming of Apps Script project source still requires Google Apps Script editor/authorized API actions.
