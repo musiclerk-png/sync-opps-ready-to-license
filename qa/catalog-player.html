@@ -59,7 +59,7 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <div id="referenceArea" hidden>
 <label for="approvedReference">Normalized player reference for administrator review</label>
 <textarea id="approvedReference" readonly></textarea>
-<div class="actions"><button type="button" class="secondary" id="copy">Copy player reference</button><button type="button" class="secondary" id="passed">Audio plays correctly</button><button type="button" class="secondary" id="failed">Audio does not play or is wrong</button></div>
+<div class="actions"><button type="button" class="secondary" id="copy">Copy player reference</button><button type="button" class="secondary" id="passed">Audio plays correctly</button><button type="button" class="secondary" id="failed">Audio does not play or is wrong</button><button type="button" class="secondary" id="externalBlocked">Provider blocks embedded playback</button></div>
 <div class="fine" id="decision" aria-live="polite"></div>
 </div>
 </div>
@@ -67,6 +67,7 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <h2>Important before publishing</h2>
 <ul>
 <li><strong>A player loading is not proof that the audio works.</strong> Press Play and listen from a signed-out browser.</li>
+<li><strong>SoundCloud public does not mean embeddable.</strong> If it says “This track can’t be played outside of SoundCloud,” the recording is blocked from outside playback. Its owner can review SoundCloud track Advanced Settings → Permissions → Display embed code, but approval is not automatic. Ask for another authorized embeddable preview if the restriction remains.</li>
 <li><strong>Unlisted does not mean secret after publication.</strong> Anyone viewing the catalog may be able to inspect or share the embedded source link.</li>
 <li><strong>Some Spotify and Apple Music embeds only offer limited previews</strong> or require a listener account for full playback. The site must describe what buyers can actually hear.</li>
 <li><strong>Bandcamp requires its official player reference.</strong> A regular track page address is not itself an embedded player.</li>
@@ -135,7 +136,7 @@ function compile(raw,chosen){
   embed.searchParams.set('url',ref);embed.searchParams.set('color','#a83b06');embed.searchParams.set('show_artwork','false');
   embed.searchParams.set('hide_related','true');embed.searchParams.set('show_comments','false');
   dest=embed.href;height=164;
-  advisory='A SoundCloud widget may load but reject a private or disabled track. Confirm the actual audio.';
+  advisory='SoundCloud public or private visibility does not guarantee embedding. If the widget says the track cannot play outside SoundCloud, this is a blocked playback result, not an approved track. Verify owner-controlled embed permissions or request another authorized source.';
  }else if(kind==='spotify'){
   if(host!=='open.spotify.com')error('Spotify must use open.spotify.com.');
   const m=path.match(/^\/(?:embed\/)?(track|album|playlist)\/([A-Za-z0-9]{22})\/?$/);
@@ -217,6 +218,7 @@ document.getElementById('copy').addEventListener('click',async function(){
 });
 document.getElementById('passed').addEventListener('click',function(){decision.textContent='Observed: audio plays. This is a playback check only. No rights or membership approval was granted.';});
 document.getElementById('failed').addEventListener('click',function(){decision.textContent='Observed: player failed or audio mismatched. Keep this song on publication hold.';});
+document.getElementById('externalBlocked').addEventListener('click',function(){decision.textContent='Observed: the streaming provider refused external embedded playback. Do not approve or publish this source. Check source owner permissions or request a separately authorized playable preview. This result is not sent to the database.';});
 })();
 </script>
 </body></html>
