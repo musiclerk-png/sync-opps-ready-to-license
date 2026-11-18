@@ -49,6 +49,15 @@ Approved records may contain only consented public display data: song ID, title,
 - Song removal requests: https://tally.so/r/e5rybE (email-confirmed removal workflow)
 - Buyer licensing inquiry: https://tally.so/r/jeoYaE is published, but automatic contact routing is not connected or tested; DO NOT link it to any real song until delivery is verified.
 
+## Beta and buyer application processor (source prepared, not installed)
+
+- [Complete Apps Script source](backend/SyncOpps_Beta_Buyer_Intake_v1.gs).
+- [Installation and safety instructions](backend/README_Beta_Buyer_Intake_v1.md).
+- [First 40 application form](https://tally.so/r/YjGvPd).
+- [Buyer licensing inquiry form](https://tally.so/r/jeoYaE), not yet linked to public song cards.
+- The new private `Beta Applications (PRIVATE)` tab collects applications; **Beta 40** remains empty until authenticated owner approval and paid Patreon membership verification.
+- This standalone script uses Tally's free API. It still requires one new Apps Script installation plus a private Tally API key stored in Script Properties. No live Tally API processing or buyer email delivery has been verified yet.
+
 ## Development management
 
 The master project development record is held in the private Google Doc `Sync Opps. Ready to License | Ongoing Development Document`. Site source is managed directly through the connected GitHub integration, without paid browser automation. Changes should be reviewed in small batches and published only when safe.
