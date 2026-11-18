@@ -14,6 +14,7 @@ Public website files for the limited **November 23, 2026** beta of the Sync Opps
 ## Live website and beta applications
 
 - Live website: https://musiclerk-png.github.io/sync-opps-ready-to-license/
+- Dedicated First 40 beta enrollment landing page: https://musiclerk-png.github.io/sync-opps-ready-to-license/beta/ (Patreon join + application CTAs).
 - First 40 paid-member beta applications: https://tally.so/r/YjGvPd
 - Existing paid members and new paid Patreon members may apply now. Beta begins November 23, 2026.
 - Applications require Patreon eligibility and available capacity confirmation; application alone is not an accepted slot.
@@ -47,7 +48,7 @@ Approved records may contain only consented public display data: song ID, title,
 
 - Member song submission: https://tally.so/r/peo0gV (private eligibility and rights review)
 - Song removal requests: https://tally.so/r/e5rybE (email-confirmed removal workflow)
-- Buyer licensing inquiry: https://tally.so/r/jeoYaE is published, but automatic contact routing is not connected or tested; DO NOT link it to any real song until delivery is verified.
+- Buyer licensing inquiry: https://tally.so/r/jeoYaE is published with song, artist and Song ID visible from URL-prefilled hidden fields. Its Tally intake processor is installed and scheduled, but its positive email-delivery path is not yet proven; do not activate real song listings until approved routing is tested.
 
 ## Beta and buyer application processor (source prepared, not installed)
 
