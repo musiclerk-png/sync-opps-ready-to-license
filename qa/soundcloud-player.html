@@ -43,16 +43,16 @@ footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(
 <main class="wrap">
 <div class="kicker">Private-data-safe browser tool</div>
 <h1>Check a SoundCloud track before publication</h1>
-<p>Use this page to test how an owner-provided SoundCloud track, including an unlisted track, plays in the same embedded player used by the catalog. This page does not approve, publish or change any music.</p>
+<p>Use this page to test how a SoundCloud track plays in the catalog's embedded player. Some private tracks cannot be embedded, even when a secret link exists. This page does not approve, publish or change any music.</p>
 <div class="panel">
 <form id="checkForm">
 <label for="track">SoundCloud track URL</label>
 <input id="track" type="url" placeholder="https://soundcloud.com/artist/track/s-secret-token" autocomplete="off" autocapitalize="off" spellcheck="false">
 <small>Try the track's private Share link. Tracking parameters will be removed but its private token is retained.</small>
-<div class="or">Or, recommended if a private song does not load</div>
+<div class="or">Optional, only if SoundCloud actually provides an Embed option</div>
 <label for="officialEmbed">Official SoundCloud embed code or player URL</label>
 <textarea id="officialEmbed" placeholder="On SoundCloud: open your track, click Share, choose Embed, and copy the complete iframe code from Code &amp; preview." autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
-<small>This tests the precise private-track reference SoundCloud embeds in its official player. The pasted code runs nowhere: we extract only a validated SoundCloud player URL.</small>
+<small>Private tracks may have Share and Embed disabled. If those controls are gray, leave this field empty. The pasted code is never run; only a validated SoundCloud player URL is extracted.</small>
 <div class="buttons">
 <button type="submit">Load SoundCloud player</button>
 <button class="secondary" type="button" id="clear">Clear this test</button>
@@ -72,10 +72,10 @@ footer{padding:22px 0;border-top:1px solid var(--line);font-size:12px;color:var(
 <h2>What to check</h2>
 <ol>
 <li>Open this page in a signed-out or Incognito browser window.</li>
-<li>Try the private Share link. If the player rejects it, open the track on SoundCloud, choose <strong>Share → Embed</strong>, and paste SoundCloud's official embed code into the second field instead.</li>
+<li>Try the private Share URL already recorded for the track. We remove ordinary tracking parameters but retain the private secret token. If Share and Embed are gray, there is no embed code for you to provide here.</li>
 <li>Confirm the player shows the expected title and artist.</li>
 <li>Press Play. Confirm the recording plays for more than a few seconds.</li>
-<li>If the Embed tab or code is unavailable, check the track's <strong>Permissions → Display embed code</strong> settings. A private track does not necessarily have to be made public.</li>
+<li>If the embedded player still reports an invalid SoundCloud URL, the track <strong>fails the on-site playback requirement</strong>. Leave it unpublished. If available, review SoundCloud's <strong>track Permissions → Display embed code</strong>; otherwise submit a separate authorized, embeddable track or preview through a supported provider.</li>
 </ol>
 <p class="privacy"><strong>Privacy:</strong> This tool does not store pasted Share links or iframe codes, transmit them to the catalog database, add them to the address bar or send them to GitHub. Once you load the player, your browser passes the validated source reference to SoundCloud to play the track. Anyone obtaining an unlisted track's secret link may be able to listen, so do not use the source link in a public catalog until authorized.</p>
 </div>
