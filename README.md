@@ -9,12 +9,14 @@ Public website files for the limited **November 23, 2026** beta of the Sync Opps
 - `index.html`: buyer-facing searchable catalog and licensing information interface based on the owner-approved design.
 - `catalog.json`: legacy empty static feed, not used by live mode. Currently `"songs": []`.
 - `feed-config.json`: live mode enabled with the standalone read-only Apps Script Web app URL; no stale fallback on feed failure.
+- Catalog rechecks the live feed after a visitor returns to an inactive browser tab (at most once per 60 seconds) to reduce stale withdrawn listings. A buyer inquiry is still independently blocked at the private server if publication or authority becomes invalid.
 - Google Sheets is the **private** source of truth. Never publish the workbook, raw Tally responses, Patreon emails, contact-routing emails, private authority documentation, or admin notes.
 
 ## Live website and beta applications
 
 - Live website: https://musiclerk-png.github.io/sync-opps-ready-to-license/
 - Dedicated First 40 beta enrollment landing page: https://musiclerk-png.github.io/sync-opps-ready-to-license/beta/ (Patreon join + application CTAs).
+- Browser-only SoundCloud QA tool: https://musiclerk-png.github.io/sync-opps-ready-to-license/qa/soundcloud-player.html (unlinked from navigation). Test private track playback here **without** adding unapproved music or secret SoundCloud URLs to the repository.
 - First 40 paid-member beta applications: https://tally.so/r/YjGvPd
 - Existing paid members and new paid Patreon members may apply now. Beta begins November 23, 2026.
 - Applications require Patreon eligibility and available capacity confirmation; application alone is not an accepted slot.
@@ -59,16 +61,16 @@ Approved records may contain only consented public display data: song ID, title,
 - The new private `Beta Applications (PRIVATE)` tab collects applications; **Beta 40** remains empty until authenticated owner approval and paid Patreon membership verification.
 - This standalone script uses Tally's free API. It still requires one new Apps Script installation plus a private Tally API key stored in Script Properties. No live Tally API processing or buyer email delivery has been verified yet.
 
-## Pending launch-safety upgrade v1.1 (not installed)
+## Installed launch-safety upgrade v1.1 (initial checks passed)
 
-A complete replacement package is prepared in the existing DEV Drive folder and GitHub. The **current running Apps Script projects are still v1.0**, until the owner installs this update:
+Complete replacement code and rollback versions are retained in the existing DEV Drive folder and GitHub. On November 18, 2026, the owner installed v1.1 in the existing Public Catalog Feed and Beta + Buyer Intake Apps Script projects. The existing public Web app was updated to Version 2 and returned exactly an empty approved-song feed in the owner's browser. The beta intake dry run and subsequent time-based execution completed. Positive approved-song delivery and withdrawal are **not yet tested**:
 
 - [Public Catalog Feed v1.1](backend/SyncOpps_PublicCatalogFeed_v1.1.gs)
 - [Beta + Buyer Intake v1.1](backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs)
 - [Single installation and rollback guide](backend/README_Safety_Upgrade_v1.1.md)
 - [20-case offline safety test](backend/tests/test_pub_buyer_v1.1.js)
 
-The prepared v1.1 release enforces first-40 accepted beta slots until Jan 5, 2027, independently verifies each rights-owner row's consent to show names and shares, and matches public disclosures against approved underlying splits. It also blocks buyer routing on the same criteria. It must be installed in the **two existing** Apps Script projects before a real music title is published. The earlier v1.0 sources remain untouched for rollback. Do not change any private rights or member verification statuses just to make test songs appear.
+The prepared v1.1 release enforces first-40 accepted beta slots until Jan 5, 2027, independently verifies each rights-owner row's consent to show names and shares, and matches public disclosures against approved underlying splits. It also blocks buyer routing on the same criteria. The owner installed the two replacement sources in the **existing** projects; the v1.0 versions remain available for rollback. All real titles are still Hidden pending paid membership, authority, per-owner disclosure consent and signed-out playable source verification. Do not change any private rights or member verification statuses just to make test songs appear.
 
 ## Development management
 
