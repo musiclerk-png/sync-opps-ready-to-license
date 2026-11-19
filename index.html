@@ -176,7 +176,8 @@ function insertPlayer(song){const area=$('playerMount');if(!area)return;area.rep
 else if(p.type==='spotify'){area.append(playerIframe(p.url,'152'));}
 else if(p.type==='youtube'){area.append(playerIframe(p.url,'200'));}
 else if(p.type==='bandcamp'){area.append(playerIframe(p.url,'140'));}
-else if(['apple','disco'].includes(p.type)){area.append(playerIframe(p.url,'180'));}
+else if(p.type==='apple'){area.append(playerIframe(p.url,'180'));}
+else if(p.type==='disco'){area.append(playerIframe(p.url,'285'));}
 else if(p.type==='mp3'){const a=document.createElement('audio');a.controls=true;a.preload='none';a.src=p.url;area.append(a);}
 else{const div=document.createElement('div');div.style.cssText='padding:14px;background:#fff6ef;color:#6e4d3b;font-size:12px;line-height:1.6;border-radius:7px';div.textContent='DISCO accepts owner-generated official embed codes. A real member link is required to test this provider.';area.append(div);}
 const n=document.createElement('div');n.className='sample-audio-note';n.textContent='Provider playback features and full-track access may vary.';area.append(n);
