@@ -430,7 +430,9 @@ function soBBPlayerAllowedV11_(source,stream){
   if(source.includes('youtube')||source.includes('you tube'))return ['www.youtube.com','www.youtube-nocookie.com'].includes(host)&&/\/embed\//i.test(path);
   if(source.includes('bandcamp'))return ['bandcamp.com','www.bandcamp.com'].includes(host)&&/\/EmbeddedPlayer\//i.test(path);
   if(source.includes('apple'))return host==='embed.music.apple.com';
-  if(source.includes('disco'))return ['disco.ac','www.disco.ac'].includes(host);
+  // Match the production feed's official DISCO embedded-player allowlist.
+  if(source.includes('disco'))return host!=='s.disco.ac' && /(^|\.)disco\.ac$/.test(host) &&
+    /^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?$/.test(path);
   return (source.includes('mp3')||source.includes('audio'))&&/\.mp3$/i.test(path);
 }
 function soBBBuyerEmail_(r){
