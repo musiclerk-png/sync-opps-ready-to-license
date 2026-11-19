@@ -72,7 +72,7 @@ const TRUSTED_IFRAMES = {
   youtube:['www.youtube.com','www.youtube-nocookie.com'],
   bandcamp:['bandcamp.com','www.bandcamp.com'],
   apple:['embed.music.apple.com','music.apple.com'],
-  disco:['disco.ac','www.disco.ac']
+  disco:[]
 };
 function safeUrl(raw,kind) {
   try {
@@ -80,6 +80,8 @@ function safeUrl(raw,kind) {
     if(u.protocol !== 'https:' || u.username || u.password) return null;
     const h = u.hostname.toLowerCase();
     if(kind==='mp3') return u.toString();
+    // DISCO official, permissioned embed only. A sharing URL is never a player.
+    if(kind==='disco') return h!=='s.disco.ac' && /(^|\.)disco\.ac$/.test(h) && /^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?$/.test(u.pathname) ? u.toString() : null;
     const hosts = TRUSTED_IFRAMES[kind] || [];
     return hosts.includes(h) ? u.toString() : null;
   } catch(e) { return null; }
