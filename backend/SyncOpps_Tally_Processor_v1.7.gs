@@ -666,16 +666,34 @@ function syncOppsPreviewBlob_(raw,submissionId,slot) {
   if(!hasID3&&!hasMpeg)throw Error('Attachment is not recognizable MP3 binary');
   return blob.setName('preview.mp3');
 }
+function syncOppsPreviewUsageGuard_() {
+  const auth=syncOppsPreviewCredentials_();
+  const response=UrlFetchApp.fetch(
+    'https://api.cloudinary.com/v1_1/'+encodeURIComponent(auth.cloud)+'/usage',
+    {headers:{Authorization:'Basic '+Utilities.base64Encode(auth.key+':'+auth.secret)},
+     muteHttpExceptions:true}
+  );
+  if(response.getResponseCode()!==200)
+    throw Error('Free hosting quota cannot be verified. No upload attempted.');
+  const credits=JSON.parse(response.getContentText()).credits||{};
+  const percent=Number(credits.used_percent);
+  if(!Number.isFinite(percent)||percent<0)
+    throw Error('Hosting credits unavailable. No upload attempted.');
+  if(percent>=80)throw Error('Free hosting credits at 80 percent or above. Upload held.');
+  return {creditsUsedPercent:percent};
+}
 function syncOppsPreviewCloudinaryUpload_(blob) {
+  // Fail closed before upload if quota data is missing or near Free Plan limit.
+  syncOppsPreviewUsageGuard_();
   const auth=syncOppsPreviewCredentials_();
   const timestamp=Math.floor(Date.now()/1000);
-  const publicId='preview_'+Utilities.getUuid().replace(/-/g,'');
-  const params={folder:SYNC_OPPS_MP3_HOST.folder,public_id:publicId,timestamp:timestamp};
+  // Public ID path works in both dynamic and legacy Cloudinary folder modes.
+  const publicId=SYNC_OPPS_MP3_HOST.folder+'/preview_'+Utilities.getUuid().replace(/-/g,'');
+  const params={public_id:publicId,timestamp:timestamp};
   const resp=UrlFetchApp.fetch(
     'https://api.cloudinary.com/v1_1/'+encodeURIComponent(auth.cloud)+'/video/upload',
     {method:'post',payload:{
-      file:blob,folder:params.folder,public_id:params.public_id,
-      timestamp:String(timestamp),api_key:auth.key,
+      file:blob,public_id:publicId,timestamp:String(timestamp),api_key:auth.key,
       signature:syncOppsPreviewSign_(params,auth.secret)
     },muteHttpExceptions:true}
   );
@@ -684,10 +702,11 @@ function syncOppsPreviewCloudinaryUpload_(blob) {
   const body=JSON.parse(resp.getContentText());
   const url=String(body.secure_url||'');
   const expected='https://res.cloudinary.com/'+auth.cloud+'/video/upload/';
-  if(!url.startsWith(expected)||!/\.mp3(?:[?#]|$)/i.test(url)||
-     body.resource_type!=='video'||body.public_id!==SYNC_OPPS_MP3_HOST.folder+'/'+publicId)
-    throw Error('Public CDN response did not meet the approved preview URL rules');
-  return {url:url,id:body.public_id};
+  if(!url.startsWith(expected) ||
+     !new RegExp('/v[0-9]+/'+SYNC_OPPS_MP3_HOST.folder+'/preview_[a-f0-9]{32}\\.mp3$','i').test(url) ||
+     body.resource_type!=='video'||body.public_id!==publicId)
+    throw Error('Cloudinary returned an unrecognized asset URL. Check the account for an orphaned asset.');
+  return {url:url,id:publicId};
 }
 function syncOppsPreviewCloudinaryDestroy_(publicId) {
   const auth=syncOppsPreviewCredentials_();
