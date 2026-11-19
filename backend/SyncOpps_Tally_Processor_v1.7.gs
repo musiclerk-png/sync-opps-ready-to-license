@@ -808,28 +808,45 @@ function syncOppsHostAuthorizedMp3Previews() {
   }finally{lock.releaseLock();}
 }
 function syncOppsRevokeHostedPreviews_() {
-  const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
-  const songs=syncOppsPreviewTable_(ss,'Songs');
-  const report={revoked:0,errors:[]};
-  for(let i=0;i<songs.rows.length;i++){
-    const s=songs.rows[i];
-    const id=syncOppsPreviewC_(s,'Preview Host Public ID (PRIVATE)');
-    if(!id)continue;
-    if(!['Paused','Withdrawn'].includes(syncOppsPreviewC_(s,'Catalog Status')) &&
-       syncOppsPreviewC_(s,'Preview Host Authorization (PRIVATE)')!=='Withdraw / Delete')continue;
-    const songId=syncOppsPreviewC_(s,'Song ID');
-    try {
-      syncOppsPreviewCloudinaryDestroy_(id);
-      syncOppsPreviewSet_(songs,i,{
-        'Authorized Embed Reference':'',
-        'Preview Host Public ID (PRIVATE)':'',
-        'Preview Host Authorization (PRIVATE)':'Do Not Host',
-        'Preview Host Updated On (PRIVATE)':new Date()
-      });
-      report.revoked++;
-    } catch(e) {report.errors.push({songId:songId,error:String(e)});}
-  }
-  if(report.revoked||report.errors.length)
-    Logger.log('MP3 preview withdrawal check: '+JSON.stringify(report));
-  return report;
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(25000))throw Error('Another catalog preview operation is active');
+  try {
+    const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
+    const songs=syncOppsPreviewTable_(ss,'Songs');
+    const members=syncOppsPreviewTable_(ss,'Members');
+    const beta=syncOppsPreviewTable_(ss,'Beta 40');
+    const report={revoked:0,errors:[]};
+    for(let i=0;i<songs.rows.length;i++){
+      const s=songs.rows[i];
+      const id=syncOppsPreviewC_(s,'Preview Host Public ID (PRIVATE)');
+      if(!id)continue;
+      const status=syncOppsPreviewC_(s,'Catalog Status');
+      const decision=syncOppsPreviewC_(s,'Preview Host Authorization (PRIVATE)');
+      const invalidated=
+        ['Paused','Withdrawn','Archived'].includes(status) ||
+        decision!=='Approved Preview' ||
+        syncOppsPreviewC_(s,'Rights Status')!=='Verified' ||
+        syncOppsPreviewC_(s,'Member Listing Authorization')!=='Yes' ||
+        !syncOppsPreviewEligibility_(s,members,beta);
+      if(!invalidated)continue;
+      const songId=syncOppsPreviewC_(s,'Song ID');
+      try {
+        syncOppsPreviewCloudinaryDestroy_(id);
+        // Public feed and buyer routing already suppress unapproved listings.
+        // Clear the revocation record only after Cloudinary confirms removal.
+        syncOppsPreviewSet_(songs,i,{
+          'Authorized Embed Reference':'',
+          'Preview Host Public ID (PRIVATE)':'',
+          'Preview Host Authorization (PRIVATE)':'Do Not Host',
+          'Preview Host Updated On (PRIVATE)':new Date()
+        });
+        report.revoked++;
+      }catch(e){
+        report.errors.push({songId:songId,error:String(e)});
+      }
+    }
+    if(report.revoked||report.errors.length)
+      Logger.log('MP3 preview withdrawal check: '+JSON.stringify(report));
+    return report;
+  }finally{lock.releaseLock();}
 }
