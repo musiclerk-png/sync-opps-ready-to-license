@@ -53,14 +53,14 @@ Approved records may contain only consented public display data: song ID, title,
 - Song removal requests: https://tally.so/r/e5rybE (email-confirmed removal workflow)
 - Buyer licensing inquiry: https://tally.so/r/jeoYaE is published with song, artist and Song ID visible from URL-prefilled hidden fields. Its Tally intake processor is installed and scheduled, but its positive email-delivery path is not yet proven; do not activate real song listings until approved routing is tested.
 
-## Beta and buyer application processor (source prepared, not installed)
+## Beta and buyer application processor (v1.1 installed, partial live intake verified)
 
 - [Complete Apps Script source](backend/SyncOpps_Beta_Buyer_Intake_v1.gs).
 - [Installation and safety instructions](backend/README_Beta_Buyer_Intake_v1.md).
 - [First 40 application form](https://tally.so/r/YjGvPd).
 - [Buyer licensing inquiry form](https://tally.so/r/jeoYaE), not yet linked to public song cards.
 - The new private `Beta Applications (PRIVATE)` tab collects applications; **Beta 40** remains empty until authenticated owner approval and paid Patreon membership verification.
-- This standalone script uses Tally's free API. It still requires one new Apps Script installation plus a private Tally API key stored in Script Properties. No live Tally API processing or buyer email delivery has been verified yet.
+- This existing standalone Apps Script project already has the Tally API key and an installed trigger. A live beta application imported into the private Sheet and a controlled unpublished-song buyer inquiry was blocked as designed. Positive delivery to a verified licensed member is still untested. Do not reinstall v1.0 or create a duplicate trigger.
 
 ## Installed launch-safety upgrade v1.1 (initial checks passed)
 
@@ -76,3 +76,11 @@ The prepared v1.1 release enforces first-40 accepted beta slots until Jan 5, 202
 ## Development management
 
 The master project development record is held in the private Google Doc `Sync Opps. Ready to License | Ongoing Development Document`. Site source is managed directly through the connected GitHub integration, without paid browser automation. Changes should be reviewed in small batches and published only when safe.
+
+## Managed MP3 preview uploads (new source prepared, not yet installed)
+
+- Member song submission now accepts one authorized MP3 preview up to 10 MB per song, in the same published Tally form and existing Google Sheet.
+- [Complete existing-intake Apps Script replacement](backend/SyncOpps_Tally_Processor_v1.7.gs).
+- [One-time installation, free hosting quota, withdrawal and DISCO guide](backend/README_Managed_MP3_v1.7.md).
+- Hosting uses a privately reviewed Tally attachment and a separate explicit Cloudinary Free preview asset. The script rejects bearer URLs in public output, requires verified paid beta eligibility and rights approval, and stops new uploads at 80 percent free hosting credit use. Cloudinary account credentials and existing Apps Script project installation are still needed. No real hosted MP3 has yet played end-to-end.
+- Normal DISCO share links remain held for review. Only owner-generated official DISCO embed URLs may become public players, after signed-out playback verification.
