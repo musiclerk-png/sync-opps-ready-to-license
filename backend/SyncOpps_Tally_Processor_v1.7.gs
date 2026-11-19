@@ -850,3 +850,37 @@ function syncOppsRevokeHostedPreviews_() {
     return report;
   }finally{lock.releaseLock();}
 }
+
+/**
+ * READ ONLY setup report. Safe to run once after replacing the code.
+ * Returns booleans and counts, never cloud credentials or private audio URLs.
+ * Missing raw upload columns are expected UNTIL Tally syncs its first
+ * submission containing one of the new file questions.
+ */
+function syncOppsPreviewSetupCheck() {
+  const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
+  const songs=syncOppsPreviewTable_(ss,'Songs');
+  const raw=syncOppsPreviewTable_(ss,'Tally Raw Responses');
+  const p=PropertiesService.getScriptProperties();
+  const required=['CLOUDINARY_CLOUD_NAME','CLOUDINARY_API_KEY','CLOUDINARY_API_SECRET'];
+  const report={
+    mode:'READ ONLY',
+    intakeSourceVersion:'v1.7 managed MP3 hosting',
+    privateSongAdminColumnsReady:[
+      'Preview Host Authorization (PRIVATE)',
+      'Preview Host Public ID (PRIVATE)',
+      'Preview Host Updated On (PRIVATE)'
+    ].every(h=>songs.headers.includes(h)),
+    tallySong1UploadColumnReady:raw.headers.includes('Song 1: Upload authorized MP3 preview'),
+    tallySong2UploadColumnReady:raw.headers.includes('Song 2: Upload authorized MP3 preview'),
+    cloudinaryPrivatePropertiesConfigured:required.every(k=>!!p.getProperty(k)),
+    previewSubmissionsPending:songs.rows.filter(x=>
+      syncOppsPreviewC_(x,'Music Source')==='Managed MP3 Preview' &&
+      syncOppsPreviewC_(x,'Preview Host Authorization (PRIVATE)')==='Pending').length,
+    publishedBySetupCheck:0,
+    emailsSentBySetupCheck:0,
+    newTriggersCreated:0
+  };
+  Logger.log(JSON.stringify(report));
+  return report;
+}
