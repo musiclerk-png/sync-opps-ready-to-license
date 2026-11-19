@@ -228,7 +228,9 @@ function soPublicPlayerV1_(source,url) {
     return {type:'bandcamp',url:url};
   if(src.indexOf('apple')>=0 && host==='embed.music.apple.com')
     return {type:'apple',url:url};
-  if(src.indexOf('disco')>=0 && (host==='disco.ac'||host==='www.disco.ac'))
+  // Only the owner's official DISCO embed URL; a share page is not embeddable.
+  if(src.indexOf('disco')>=0 && host!=='s.disco.ac' && /(^|\.)disco\.ac$/.test(host) &&
+     /^https:\/\/[^/?#]+\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?(?:[?#]|$)/i.test(url))
     return {type:'disco',url:url};
   if((src.indexOf('mp3')>=0||src.indexOf('audio')>=0) && /\.mp3(?:[?#]|$)/i.test(url))
     return {type:'mp3',url:url};
