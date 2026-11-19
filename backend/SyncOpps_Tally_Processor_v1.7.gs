@@ -642,28 +642,45 @@ function syncOppsPreviewEligibility_(song,mem,beta) {
   return true;
 }
 function syncOppsPreviewBlob_(raw,submissionId,slot) {
-  const rows=raw.rows.filter(r=>syncOppsPreviewC_(r,'Submission ID')===submissionId);
-  if(rows.length!==1)throw Error('Exactly one private Tally submission required');
+  const n=raw.rows.findIndex(r=>syncOppsPreviewC_(r,'Submission ID')===submissionId);
+  if(n<0||raw.rows.some((r,i)=>i!==n&&syncOppsPreviewC_(r,'Submission ID')===submissionId))
+    throw Error('Expected exactly one private Tally submission');
   const field='Song '+slot+': Upload authorized MP3 preview';
-  const privateCell=syncOppsPreviewC_(rows[0],field);
-  const matches=privateCell.match(/https:\/\/storage\.tally\.so\/[^\s<>"']+/gi)||[];
-  if(matches.length!==1)throw Error('Missing or unsupported private Tally upload attachment reference');
-  // Remove ordinary trailing punctuation of a pasted link, if any.
-  const url=matches[0].replace(/[),;]+$/,'');
-  if(!/^https:\/\/storage\.tally\.so\/[^@\s<>"']+/i.test(url))
-    throw Error('Private attachment storage hostname invalid');
+  const col=raw.headers.indexOf(field);
+  if(col<0)throw Error('Existing private Tally raw Sheet has no MP3 attachment column yet. Review the Tally integration.');
+  const cell=raw.sheet.getRange(n+2,col+1);
+  // The Tally integration may use URL text, a hyperlink cell, or a
+  // HYPERLINK formula. No bearer-token URL is ever logged or published.
+  const candidates=[syncOppsPreviewC_(raw.rows[n],field),
+    String(cell.getValue()||''),String(cell.getFormula()||'')];
+  const rich=cell.getRichTextValue();
+  if(rich){
+    if(rich.getLinkUrl())candidates.push(rich.getLinkUrl());
+    if(rich.getRuns)rich.getRuns().forEach(v=>{
+      if(v.getLinkUrl())candidates.push(v.getLinkUrl());
+    });
+  }
+  const urls=[];
+  candidates.forEach(value=>{
+    (String(value).match(/https:\/\/storage\.tally\.so\/[^\s<>"']+/gi)||[]).forEach(u=>{
+      u=u.replace(/[),;]+$/,'');
+      if(!urls.includes(u))urls.push(u);
+    });
+  });
+  if(urls.length!==1)throw Error('A unique private Tally attachment URL was not found for this song');
+  const url=urls[0];
+  if(!/^https:\/\/storage\.tally\.so\/[^@\s<>"']+$/i.test(url))
+    throw Error('Tally attachment origin invalid');
   const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true,followRedirects:true});
   if(response.getResponseCode()!==200)
-    throw Error('Private Tally upload cannot be downloaded; secure attachment kept in review');
-  const blob=response.getBlob();
-  const bytes=blob.getBytes();
+    throw Error('Private Tally attachment unavailable');
+  const blob=response.getBlob(),bytes=blob.getBytes();
   if(!bytes.length||bytes.length>SYNC_OPPS_MP3_HOST.maxBytes)
-    throw Error('Uploaded MP3 is empty or exceeds 10MB');
-  // Basic binary MP3 signature validation, NOT malware scanning or legal QA.
+    throw Error('MP3 attachment missing or over 10 MB');
   const b0=bytes[0]&255,b1=(bytes[1]||0)&255,b2=(bytes[2]||0)&255;
-  const hasID3=(b0===73 && b1===68 && b2===51);
-  const hasMpeg=(b0===255 && (b1&224)===224 && (b1&24)!==8);
-  if(!hasID3&&!hasMpeg)throw Error('Attachment is not recognizable MP3 binary');
+  const hasID3=(b0===73&&b1===68&&b2===51);
+  const hasMpeg=(b0===255&&(b1&224)===224&&(b1&24)!==8);
+  if(!hasID3&&!hasMpeg)throw Error('File did not have a recognizable MP3 signature');
   return blob.setName('preview.mp3');
 }
 function syncOppsPreviewUsageGuard_() {
