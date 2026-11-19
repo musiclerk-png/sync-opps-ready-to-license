@@ -349,8 +349,14 @@ function SO_bridgeVerifyDeploy_(s) {
     const res=UrlFetchApp.fetch(SO_BRIDGE.feedUrl,{muteHttpExceptions:true,followRedirects:true});
     if(res.getResponseCode()===200) {
       try {
-        const body=JSON.parse(res.getContentText());
-        if(body&&typeof body==='object'&&('schemaVersion' in body||'songs' in body||'items' in body)){
+        // Public feed is intentionally JSONP because GitHub Pages loads it as
+        // a third-party script, not an XHR JSON response. Parse the exact
+        // trusted callback without eval, never arbitrary JavaScript.
+        const payload=String(res.getContentText()||'').trim();
+        const match=payload.match(/^window\\.syncOppsApprovedFeedV1\\((\\{[\\s\\S]*\\})\\);?$/);
+        if(!match)throw Error('Existing feed response is not approved JSONP');
+        const body=JSON.parse(match[1]);
+        if(body && body.schemaVersion===1 && Array.isArray(body.songs)){
           s.phase='FINALIZE';return SO_bridgeCheckpoint_(s,'EXISTING_FEED_VERIFIED');
         }
       }catch(e){}
