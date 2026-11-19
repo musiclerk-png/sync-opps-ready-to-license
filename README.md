@@ -55,8 +55,8 @@ Approved records may contain only consented public display data: song ID, title,
 
 ## Beta and buyer application processor (v1.1 installed, partial live intake verified)
 
-- [Complete Apps Script source](backend/SyncOpps_Beta_Buyer_Intake_v1.gs).
-- [Installation and safety instructions](backend/README_Beta_Buyer_Intake_v1.md).
+- [Installed v1.1 processor source](backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs).
+- [Installed v1.1 safety and rollback guide](backend/README_Safety_Upgrade_v1.1.md).
 - [First 40 application form](https://tally.so/r/YjGvPd).
 - [Buyer licensing inquiry form](https://tally.so/r/jeoYaE), not yet linked to public song cards.
 - The new private `Beta Applications (PRIVATE)` tab collects applications; **Beta 40** remains empty until authenticated owner approval and paid Patreon membership verification.
