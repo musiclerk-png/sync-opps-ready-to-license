@@ -232,6 +232,13 @@ function soPublicPlayerV1_(source,url) {
   if(src.indexOf('disco')>=0 && host!=='s.disco.ac' && /(^|\.)disco\.ac$/.test(host) &&
      /^https:\/\/[^/?#]+\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?(?:[?#]|$)/i.test(url))
     return {type:'disco',url:url};
+  if(src.indexOf('managed mp3 preview')>=0) {
+    // Reject Tally private attachment links even if mistakenly added to staging.
+    if(host==='res.cloudinary.com' &&
+       /^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(url))
+      return {type:'mp3',url:url};
+    return null;
+  }
   if((src.indexOf('mp3')>=0||src.indexOf('audio')>=0) && /\.mp3(?:[?#]|$)/i.test(url))
     return {type:'mp3',url:url};
   return null;
