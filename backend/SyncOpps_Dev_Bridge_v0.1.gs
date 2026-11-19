@@ -248,12 +248,15 @@ function SO_bridgeSource_(r) {
 }
 function SO_bridgePrecheck_(s) {
   const file=DriveApp.getFileById(s.request_file_id),r=JSON.parse(file.getBlob().getDataAsString());
+  // Capture the request ID before any permission or validation step can fail.
+  // A failed precheck must never write another generic 'unknown' result.
+  s.request_id=String(r.request_id||'').trim();
   const email=String(Session.getEffectiveUser().getEmail()||'').toLowerCase();
   SO_bridgeAssert_(!!email,'Cannot verify authorized request owner; refusing deployment.');
   SO_bridgeAssert_(!!file.getOwner() && String(file.getOwner().getEmail()||'').toLowerCase()===email,
     'Request must be owned by bridge Google account.');
   SO_bridgeAssert_(r.schema_version===1&&r.status==='READY','Bad request schema/status.');
-  SO_bridgeAssert_(/^[a-z0-9-]{8,64}$/.test(r.request_id||''),'Bad request ID.');
+  SO_bridgeAssert_(/^[a-z0-9-]{8,64}$/.test(s.request_id),'Bad request ID.');
   SO_bridgeAssert_(r.action==='UPDATE_HEAD'||r.action==='UPDATE_EXISTING_FEED',
     'Unsupported mutation mode.');
   SO_bridgeAssert_(Object.hasOwnProperty.call(SO_BRIDGE.expectedNames,r.project),'Unknown project.');
