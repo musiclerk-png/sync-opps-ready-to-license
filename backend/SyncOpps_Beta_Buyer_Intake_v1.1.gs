@@ -360,8 +360,20 @@ function soBBBuyerEligible_(songId,buyerEmail,buyerName,message,songs,staging,me
        soBBC_(stage,staging,'Master Owners / Splits (Consent)')))
     return failure('Public ownership consent or verified split matching incomplete');
   const source=soBBC_(stage,staging,'Music Source').toLowerCase();
-  const stream=soBBC_(song,songs,'Authorized Embed Reference')||
+  if(source!==soBBC_(song,songs,'Music Source').toLowerCase())
+    return failure('Public staging music source does not match the private song');
+  const hostedReference=soBBC_(song,songs,'Authorized Embed Reference');
+  const managed=source.indexOf('managed mp3 preview')>=0;
+  let stream=hostedReference||
     soBBC_(stage,staging,'Stream URL / Embed ID')||soBBC_(song,songs,'Stream URL');
+  if(managed){
+    const assetId=soBBC_(song,songs,'Preview Host Public ID (PRIVATE)');
+    if(soBBC_(song,songs,'Preview Host Authorization (PRIVATE)')!=='Approved Preview'||
+       !/^sync_opps_catalog_previews\/preview_[a-f0-9]{32}$/i.test(assetId)||
+       !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3'))
+      return failure('Managed MP3 preview is not authorized or its active Cloudinary asset is missing');
+    stream=hostedReference;
+  }
   if(!soBBPlayerAllowedV11_(source,stream))
     return failure('Public player source unavailable or invalid');
   const memberId=soBBC_(song,songs,'Member ID');
