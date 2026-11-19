@@ -27,11 +27,15 @@ function syncOppsDryRun() {
 }
 
 function syncOppsProcessIntake() {
-  const outcome=syncOppsExecute_(false);
-  // Reuse this existing trigger to revoke public CDN assets after verified
-  // pause/withdrawal; public feed and buyer routing already fail closed.
-  try { outcome.hostedPreviewWithdrawals=syncOppsRevokeHostedPreviews_(); }
-  catch(e){ Logger.log('PREVIEW WITHDRAWAL CHECK FAILED: '+String(e)); }
+  let outcome=null, intakeError=null;
+  try { outcome=syncOppsExecute_(false); }
+  catch(e){intakeError=e;Logger.log('INTAKE FAILED: '+String(e));}
+  // A failed ingestion must not prevent a confirmed preview withdrawal.
+  try {
+    const withdrawal=syncOppsRevokeHostedPreviews_();
+    if(outcome)outcome.hostedPreviewWithdrawals=withdrawal;
+  } catch(e) {Logger.log('PREVIEW WITHDRAWAL CHECK FAILED: '+String(e));}
+  if(intakeError)throw intakeError;
   return outcome;
 }
 
@@ -762,6 +766,7 @@ function syncOppsHostAuthorizedMp3Previews() {
       try {
         if(syncOppsPreviewC_(s,'Catalog Status')!=='Hidden' ||
            syncOppsPreviewC_(s,'Member Listing Authorization')!=='Yes' ||
+           syncOppsPreviewC_(s,'Rights Status')!=='Verified' ||
            !syncOppsPreviewEligibility_(s,members,beta)){
           report.skipped++;continue;
         }
@@ -771,12 +776,31 @@ function syncOppsHostAuthorizedMp3Previews() {
         // Explicit manual Songs approval is mandatory BEFORE any asset goes public.
         const blob=syncOppsPreviewBlob_(raw,sid,slot);
         const hosted=syncOppsPreviewCloudinaryUpload_(blob);
-        syncOppsPreviewSet_(songs,i,{
-          'Authorized Embed Reference':hosted.url,
-          'Preview Host Public ID (PRIVATE)':hosted.id,
-          'Preview Host Updated On (PRIVATE)':new Date()
-        });
-        report.hosted++;
+        try {
+          // Save the revocation ID first, before the playable HTTPS URL.
+          syncOppsPreviewSet_(songs,i,{
+            'Preview Host Public ID (PRIVATE)':hosted.id,
+            'Preview Host Updated On (PRIVATE)':new Date(),
+            'Authorized Embed Reference':hosted.url
+          });
+          report.hosted++;
+        } catch(writeError) {
+          // Keep an ID for a later cleanup attempt even after partial writes.
+          try {syncOppsPreviewSet_(songs,i,{
+            'Authorized Embed Reference':'',
+            'Preview Host Public ID (PRIVATE)':hosted.id,
+            'Preview Host Authorization (PRIVATE)':'Withdraw / Delete'
+          });}catch(e){Logger.log('MP3 preview cleanup marker could not be saved');}
+          try {
+            syncOppsPreviewCloudinaryDestroy_(hosted.id);
+            syncOppsPreviewSet_(songs,i,{
+              'Authorized Embed Reference':'',
+              'Preview Host Public ID (PRIVATE)':'',
+              'Preview Host Authorization (PRIVATE)':'Do Not Host'
+            });
+          }catch(e){Logger.log('MP3 preview CDN revocation requires retry');}
+          throw writeError;
+        }
       }catch(e){report.errors.push({songId:songId,error:String(e)});}
     }
     Logger.log('Preview hosting (private review): '+JSON.stringify(report));
