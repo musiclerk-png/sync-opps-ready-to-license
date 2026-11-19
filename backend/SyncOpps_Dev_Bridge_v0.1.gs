@@ -130,6 +130,14 @@ function SO_bridgeDiscover_() {
     const f=it.next(),name=f.getName();
     Object.keys(matches).forEach(k=>{if(SO_BRIDGE.expectedNames[k].test(name))matches[k].push({id:f.getId(),name:name});});
   }
+  // One-time fallback if an Apps Script project is not indexed by Drive search.
+  // The property is a Script ID from the owner's existing project settings.
+  const props=PropertiesService.getScriptProperties();
+  Object.keys(matches).forEach(k=>{
+    if(matches[k].length)return;
+    const id=(props.getProperty('SO_BRIDGE_TARGET_ID_'+k.toUpperCase())||'').trim();
+    if(/^[A-Za-z0-9_-]{15,}$/.test(id))matches[k].push({id:id,name:'Owner-provided Script ID'});
+  });
   return matches;
 }
 function SO_bridgeInventory_() {
@@ -146,6 +154,8 @@ function SO_bridgeInventory_() {
     const x=list[0];
     try {
       const meta=SO_bridgeApi_('GET','/projects/'+encodeURIComponent(x.id));
+      SO_bridgeAssert_(SO_BRIDGE.expectedNames[k].test(meta.title||''),
+        'Script ID belongs to wrong project: '+String(meta.title||''));
       const content=SO_bridgeContent_(x.id);
       const files=SO_bridgeMinimalFiles_(content.files);
       SO_bridgeAssert_(files.some(f=>f.name==='appsscript'&&f.type==='JSON'),'Missing preserved manifest.');
