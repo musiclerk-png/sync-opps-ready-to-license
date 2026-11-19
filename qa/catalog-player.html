@@ -165,7 +165,7 @@ function compile(raw,chosen){
    error('This is a DISCO Share link, not an embed player. In DISCO, open the Track menu → Share → Embed → Copy embed code.');
   if(!parsed.isIframe||!host.endsWith('.disco.ac')||!/^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+/.test(path))
    error('DISCO requires the official iframe from Track or Playlist → Share → Embed. Do not paste the ordinary DISCO Share URL.');
-  dest=u.href;ref=dest;height=245;experimental=true;
+  dest=u.href;ref=dest;height=285;experimental=true;
   advisory='DISCO official embed can be tested here. Production player allowlisting requires a separate backend update before publishing.';
  }else if(kind==='untitled'){
   if(!parsed.isIframe||!['untitled.stream','web.untitled.stream','embed.untitled.stream'].includes(host)||/^\/library\//.test(path))
