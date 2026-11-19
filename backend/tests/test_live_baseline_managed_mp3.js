@@ -1,0 +1,55 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
+const folder=path.join(__dirname,'..');
+const publicCode=fs.readFileSync(path.join(folder,'SyncOpps_PublicCatalogFeed_v1.1.gs'),'utf8');
+const buyerCode=fs.readFileSync(path.join(folder,'SyncOpps_Beta_Buyer_Intake_v1.1.gs'),'utf8');
+const cloudinary='https://res.cloudinary.com/testcloud/video/upload/v123/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3';
+const assetId='sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const sid='SONG-ABCD12345678',mid='MEM-TEST12345678';
+let db={};
+const pctx=vm.createContext({PropertiesService:{getScriptProperties:()=>({getProperty:()=> 'TEST_SHEET_ID_STRING_LONG_ENOUGH_TO_PASS'})},SpreadsheetApp:{openById:()=>({getSheetByName:name=>db[name]?({getDataRange:()=>({getDisplayValues:()=>[Object.keys(db[name][0]||{}),...db[name].map(x=>Object.values(x))]})}):null})},console,Date,encodeURIComponent,ContentService:{MimeType:{JAVASCRIPT:'javascript'},createTextOutput:txt=>({txt,setMimeType(){return this;}})}});
+vm.runInContext(publicCode,pctx);
+const bctx=vm.createContext({console,Date});vm.runInContext(buyerCode,bctx);
+function fixture(source='Managed MP3 Preview'){
+ return {
+ 'Public Staging':[{'Song ID':sid,'Song Title':'Sample Track','Artist Display Name':'Example Artist','Genre':'Cinematic','Music Source':source,'Stream URL / Embed ID':source==='Managed MP3 Preview'?cloudinary:'https://soundcloud.com/test/track','Duration':'3:12','Mood Tags':'Hopeful','Great For Tags':'Dramatic Scene','Instrumental Available':'Yes','Explicit Lyrics':'No','Composition Credits / Splits (Consent)':'Example Writer 100%','Publisher Owners / Splits (Consent)':'Example Publishing 100%','Master Owners / Splits (Consent)':'Example Records 100%','Rights Disclosure':'Direct artist authorization','Licensing Restrictions':'None','Buyer Contact Method (Private Form)':'Private form','Buyer Inquiry Form URL (No Public Email)':'https://tally.so/r/jeoYaE','Final QA Check':'Yes','Ready for Separate Public Export':'Yes'}],
+ Songs:[{'Song ID':sid,'Member ID':mid,'Catalog Status':'Published','Review Status':'Approved','Member Listing Authorization':'Yes','Private Inquiry Routing Consent':'Yes','Playback Status':'Preview Only','Rights Status':'Verified','Claimed Clearance Route':'Self-Controlled','One-Stop Authority Verification':'Verified','Stream URL':'','Authorized Embed Reference':source==='Managed MP3 Preview'?cloudinary:'','Music Source':source,'Preview Host Authorization (PRIVATE)':'Approved Preview','Preview Host Public ID (PRIVATE)':assetId}],
+ Members:[{'Member ID':mid,'Patreon Email (PRIVATE)':'member@private.test','Membership Status':'Active Paid','Patreon Tier':'$5 Standard','Eligibility Verified On':'2026-11-18','Inquiry Routing Consent (Private)':'Yes','Licensing Email (PRIVATE)':'artist@private.test'}],
+ 'Beta 40':[{'Beta Slot':'1','Member ID':mid,'Patreon Email (PRIVATE)':'member@private.test','Invite Status':'Accepted','Eligibility Verified':'Yes'}],
+ 'Writer Splits':[{'Song ID':sid,'Writer Credit':'Example Writer','Writer Legal Name':'Example Writer','Writer Ownership % (0-100)':'100.00%','Approved for Public Display':'Yes'}],
+ 'Publishing Splits':[{'Song ID':sid,'Publisher / Copyright Owner':'Example Publishing','Publishing Ownership % (0-100)':'100.00%','Approved for Public Display':'Yes'}],
+ 'Master Splits':[{'Song ID':sid,'Master Owner':'Example Records','Master Ownership % (0-100)':'100.00%','Approved for Public Display':'Yes'}]
+ };
+}
+function run(){
+ const feed=vm.runInContext('soPublicSnapshotV1_()',pctx);
+ const table=n=>({headers:Object.keys(db[n][0]),rows:db[n].map(x=>Object.values(x)),title:n});
+ bctx.__args=[sid,'buyer@example.com','Buyer','Film licensing inquiry',table('Songs'),table('Public Staging'),table('Members'),{headers:['Received On','Buyer Email (PRIVATE)','Song ID'],rows:[],title:'Buyer Inquiries'},table('Beta 40'),table('Writer Splits'),table('Publishing Splits'),table('Master Splits')];
+ const buyer=vm.runInContext('soBBBuyerEligible_(...__args)',bctx);
+ assert.equal(feed.songs.length===1,buyer.allowed,'Public feed and buyer route inconsistent');
+ return {feed,buyer};
+}
+let count=0;
+function test(name,kind,mutate,allow){db=structuredClone(fixture(kind));if(mutate)mutate(db);const {feed,buyer}=run();assert.equal(feed.songs.length,allow?1:0,'Feed '+name);assert.equal(buyer.allowed,allow,'Buyer '+name+': '+buyer.reason);if(allow){assert(!JSON.stringify(feed).includes('@private.test'),'Private email exposed');assert.equal(feed.songs[0].player.type,kind==='Managed MP3 Preview'?'mp3':'soundcloud');}console.log('PASS '+name);count++;}
+test('approved managed MP3 + exact active Cloudinary ID','Managed MP3 Preview',null,true);
+test('pending hosting authorization', 'Managed MP3 Preview',d=>d.Songs[0]['Preview Host Authorization (PRIVATE)']='Pending',false);
+test('deleted host status not approved','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Authorization (PRIVATE)']='Do Not Host',false);
+test('revocation clears active Cloudinary ID','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Public ID (PRIVATE)']='',false);
+test('revocation clears authorized reference but leaves staging URL','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='',false);
+test('private ID differs from staged Cloudinary URL','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Public ID (PRIVATE)']='sync_opps_catalog_previews/preview_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',false);
+test('Cloudinary ID wrong folder','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Public ID (PRIVATE)']='other/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',false);
+test('private approved URL has wrong host','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://storage.tally.so/test.mp3',false);
+test('staging switches managed source to SoundCloud','Managed MP3 Preview',d=>{d['Public Staging'][0]['Music Source']='SoundCloud';d['Public Staging'][0]['Stream URL / Embed ID']='https://soundcloud.com/test/track';},false);
+test('approved normal SoundCloud unaffected','SoundCloud',null,true);
+test('SoundCloud staged source cannot masquerade as managed','SoundCloud',d=>d['Public Staging'][0]['Music Source']='Managed MP3 Preview',false);
+test('withdrawn track suppresses both','Managed MP3 Preview',d=>d.Songs[0]['Catalog Status']='Withdrawn',false);
+test('paused track suppresses both','Managed MP3 Preview',d=>d.Songs[0]['Catalog Status']='Paused',false);
+test('hidden track suppresses both','Managed MP3 Preview',d=>d.Songs[0]['Catalog Status']='Hidden',false);
+test('unverified paid membership suppresses both','Managed MP3 Preview',d=>d.Members[0]['Membership Status']='Unverified',false);
+test('beta slot unaccepted suppresses both','Managed MP3 Preview',d=>d['Beta 40'][0]['Invite Status']='Pending',false);
+test('writer public consent missing suppresses both','Managed MP3 Preview',d=>d['Writer Splits'][0]['Approved for Public Display']='No',false);
+test('publishing public consent missing suppresses both','Managed MP3 Preview',d=>d['Publishing Splits'][0]['Approved for Public Display']='No',false);
+test('master public consent missing suppresses both','Managed MP3 Preview',d=>d['Master Splits'][0]['Approved for Public Display']='No',false);
+test('incomplete rights shares suppress both','Managed MP3 Preview',d=>d['Writer Splits'][0]['Writer Ownership % (0-100)']='75%',false);
+test('buyer inquiry form mismatch suppresses both','Managed MP3 Preview',d=>d['Public Staging'][0]['Buyer Inquiry Form URL (No Public Email)']='https://tally.so/r/other',false);
+test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['One-Stop Authority Verification']='Pending Review',false);
+console.log('TOTAL '+count+' approved and fail-closed cases passed');
