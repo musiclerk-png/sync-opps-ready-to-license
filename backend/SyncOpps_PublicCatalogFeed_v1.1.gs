@@ -107,8 +107,7 @@ function soPublicSnapshotV1_() {
     const genre=soPublicSafeTextV1_(soPublicCellV1_(st,'Genre'),70);
     const source=soPublicSafeTextV1_(soPublicCellV1_(st,'Music Source'),60);
     if (!title || !artist || !genre || !source) return;
-    // Public Staging must never switch a managed MP3 to another source category
-    // to bypass the private hosting authorization and asset-ID checks.
+    // A staged URL may never switch the real song's source category.
     if(source.toLowerCase()!==soPublicCellV1_(song,'Music Source').toLowerCase())return;
     // One approved private inquiry route, with only public song-identification parameters.
     const inquiry=soPublicCellV1_(st,'Buyer Inquiry Form URL (No Public Email)');
@@ -121,8 +120,7 @@ function soPublicSnapshotV1_() {
       soPublicCellV1_(st,'Stream URL / Embed ID') ||
       soPublicCellV1_(song,'Stream URL');
     if(managed){
-      // Never trust the public staging URL alone for managed audio:
-      // it can outlive the private Cloudinary asset or its authorization.
+      // A staged preview URL may outlive its private hosting authorization.
       const assetId=soPublicCellV1_(song,'Preview Host Public ID (PRIVATE)');
       if(soPublicCellV1_(song,'Preview Host Authorization (PRIVATE)')!=='Approved Preview' ||
          !/^sync_opps_catalog_previews\/preview_[a-f0-9]{32}$/i.test(assetId) ||
@@ -242,17 +240,8 @@ function soPublicPlayerV1_(source,url) {
     return {type:'bandcamp',url:url};
   if(src.indexOf('apple')>=0 && host==='embed.music.apple.com')
     return {type:'apple',url:url};
-  // Only the owner's official DISCO embed URL; a share page is not embeddable.
-  if(src.indexOf('disco')>=0 && host!=='s.disco.ac' && /(^|\.)disco\.ac$/.test(host) &&
-     /^https:\/\/[^/?#]+\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?(?:[?#]|$)/i.test(url))
+  if(src.indexOf('disco')>=0 && (host==='disco.ac'||host==='www.disco.ac'))
     return {type:'disco',url:url};
-  if(src.indexOf('managed mp3 preview')>=0) {
-    // Reject Tally private attachment links even if mistakenly added to staging.
-    if(host==='res.cloudinary.com' &&
-       /^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(url))
-      return {type:'mp3',url:url};
-    return null;
-  }
   if((src.indexOf('mp3')>=0||src.indexOf('audio')>=0) && /\.mp3(?:[?#]|$)/i.test(url))
     return {type:'mp3',url:url};
   return null;
