@@ -77,10 +77,11 @@ The prepared v1.1 release enforces first-40 accepted beta slots until Jan 5, 202
 
 The master project development record is held in the private Google Doc `Sync Opps. Ready to License | Ongoing Development Document`. Site source is managed directly through the connected GitHub integration, without paid browser automation. Changes should be reviewed in small batches and published only when safe.
 
-## Managed MP3 preview uploads (new source prepared, not yet installed)
+## Managed MP3 preview uploads (internal lifecycle test passed November 19, 2026)
 
-- Member song submission now accepts one authorized MP3 preview up to 10 MB per song, in the same published Tally form and existing Google Sheet.
-- [Complete existing-intake Apps Script replacement](backend/SyncOpps_Tally_Processor_v1.7.gs).
-- [One-time installation, free hosting quota, withdrawal and DISCO guide](backend/README_Managed_MP3_v1.7.md).
-- Hosting uses a privately reviewed Tally attachment and a separate explicit Cloudinary Free preview asset. The script rejects bearer URLs in public output, requires verified paid beta eligibility and rights approval, and stops new uploads at 80 percent free hosting credit use. Cloudinary account credentials and existing Apps Script project installation are still needed. No real hosted MP3 has yet played end-to-end.
-- Normal DISCO share links remain held for review. Only owner-generated official DISCO embed URLs may become public players, after signed-out playback verification.
+- The existing member Tally form accepts optional authorized MP3 previews up to 10 MB per song. Files remain private in Tally until reviewed and separately hosted.
+- The existing Catalog Intake v1.7 Apps Script has been installed with the Cloudinary Free Script Properties in its own private project. The separate one-time InternalMP3Preflight code was delivered through the newly commissioned Apps Script Dev Bridge.
+- On November 19, an owner-authorized INTERNAL-only recording was successfully retrieved from private Tally, its MP3 signature checked, Cloudinary API authentication and 0% credit usage confirmed, and one temporary public upload tested (HTTP 206). Cloudinary returned `destroy: ok`, with the deleted URL later verified as HTTP 404. The test song remains Hidden with no public URL and no altered rights/member flags.
+- This proves the internal MP3 upload and withdrawal **technical lifecycle only**. It does NOT certify a publicly approved real member listing, complete HTML5 browser playback, purchaser email delivery, or rights clearance.
+- Security regression: A staged-only managed MP3 URL could pass legacy public-feed/buyer-routing validation without an active private hosting approval and matching Cloudinary Public ID. The exact installed baseline was patched and **22 synthetic Node.js regression cases passed**. GitHub holds the corrected source and [test suite](backend/tests/test_live_baseline_managed_mp3.js). Public Catalog Feed's existing version 2 `/exec` must remain active until a controlled same-deployment rollout and signed-out browser tests; newly staged source alone is not a public deployment.
+- Normal DISCO share links remain held for review. Only owner-generated official DISCO embed URLs may become public players, after signed-out playback verification. Membership eligibility, all three independent ownership categories, per-owner public display consent, licensing approval and private inquiry routing are mandatory for public listing.
