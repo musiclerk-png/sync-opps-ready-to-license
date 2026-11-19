@@ -489,7 +489,9 @@ function syncOppsEnsureSplits_(repo,kind,songId,ownerRows) {
   // Count-based comparison preserves repeated identical entries and heals partial imports.
   const hdr=repo.headers[kind], idCol=hdr.indexOf('Song ID');
   const target=ownerRows.map(r=>hdr.map(k=>syncOppsSafe_(syncOppsSplitValues_(songId,kind,r)[k]||'')));
-  const rowSig=row=>JSON.stringify(row.map(x=>x instanceof Date?x.toISOString():x));
+  // Sheets can coerce numeric-looking IPI/CAE strings to numbers on readback.
+  // Compare normalized cell values so retrying an import cannot duplicate a writer.
+  const rowSig=row=>JSON.stringify(row.map(x=>x instanceof Date?x.toISOString():String(x==null?'':x).trim()));
   const counts=new Map();
   repo.rows[kind].filter(row=>String(row[idCol])===songId).forEach(row=>{
     const sig=rowSig(row);counts.set(sig,(counts.get(sig)||0)+1);
