@@ -27,7 +27,12 @@ function syncOppsDryRun() {
 }
 
 function syncOppsProcessIntake() {
-  return syncOppsExecute_(false);
+  const outcome=syncOppsExecute_(false);
+  // Reuse this existing trigger to revoke public CDN assets after verified
+  // pause/withdrawal; public feed and buyer routing already fail closed.
+  try { outcome.hostedPreviewWithdrawals=syncOppsRevokeHostedPreviews_(); }
+  catch(e){ Logger.log('PREVIEW WITHDRAWAL CHECK FAILED: '+String(e)); }
+  return outcome;
 }
 
 function syncOppsExecute_(dryRun) {
@@ -506,6 +511,7 @@ function syncOppsImport_(repo,p) {
     const needs=s.issues.length>0;
     syncOppsEnsureOne_(repo,'songs','Song ID',s.songId,{
       'Song ID':s.songId,'Member ID':p.memberId,'Tally Submission ID':p.submissionId,
+      'Preview Host Authorization (PRIVATE)':s.provider==='Managed MP3 Preview'?'Pending':'',
       'Submitted On':p.receivedOn,'Song Title':s.title,'Artist Display Name':p.artist,
       'Genre':s.genre,'Music Source':s.provider,'Stream URL':s.link,
       'Duration mm:ss':s.duration,'Vocal Type':s.vocal,'Instrumental Available':s.instrumental,
@@ -557,4 +563,213 @@ function syncOppsImport_(repo,p) {
   syncOppsUpsertIntake_(repo,p,p.reviewIssues.length?'In Review':'Processed',
     'Import complete. '+p.songs.length+' song(s). Catalog Status is Hidden. Owner-confirmed intake data corrections: '+(p.correctionCount||0)+'. '+
     (p.reviewIssues.length?p.reviewIssues.join(' | '):'Manual member/rights/playback approval still required.'));
+}
+
+
+/* ==========================================================================
+ * Approved MP3 Preview Host Bridge | Cloudinary Free Plan | November 18 2026
+ * Add to the EXISTING Sync Opps Catalog Intake Apps Script project, not a new
+ * project or trigger. Tally uploads remain private until explicit admin review.
+ * Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in
+ * this existing project's Script Properties. NEVER put credentials in Sheets.
+ *
+ * MP3 file source: the private Tally Raw Responses tab ONLY.
+ * Public CDN URL: Songs.Authorized Embed Reference ONLY after approval.
+ * Cloudinary asset ID: Songs.Preview Host Public ID (PRIVATE).
+ * Admin decision: Songs.Preview Host Authorization (PRIVATE) must equal
+ * "Approved Preview" after actual member rights and preview consent review.
+ *
+ * One-click manual Apps Script function for hosting:
+ *   syncOppsHostAuthorizedMp3Previews
+ * Existing intake trigger checks confirmed pause/withdrawal and revokes files:
+ *   syncOppsProcessIntake -> syncOppsRevokeHostedPreviews_
+ * This is a software bridge, NOT proof of a functioning live Cloudinary account.
+ * ==========================================================================
+ */
+const SYNC_OPPS_MP3_HOST = Object.freeze({
+  folder: 'sync_opps_catalog_previews',
+  maxBytes: 10 * 1024 * 1024,
+  stagingBatchMax: 3,
+  betaAccessEndUTC: '2027-01-05T06:00:00Z'
+});
+function syncOppsPreviewTable_(ss, name) {
+  const sh = ss.getSheetByName(name);
+  if (!sh) throw new Error('Missing existing private sheet: '+name);
+  const values = sh.getDataRange().getDisplayValues();
+  const h = (values[0]||[]).map(String);
+  return {sheet:sh,headers:h,rows:values.slice(1).map(v=>syncOppsAssoc_(h,v))};
+}
+function syncOppsPreviewC_(row,key) { return String((row||{})[key]||'').trim(); }
+function syncOppsPreviewCredentials_() {
+  const p=PropertiesService.getScriptProperties();
+  const cloud=(p.getProperty('CLOUDINARY_CLOUD_NAME')||'').trim();
+  const key=(p.getProperty('CLOUDINARY_API_KEY')||'').trim();
+  const secret=(p.getProperty('CLOUDINARY_API_SECRET')||'').trim();
+  if(!cloud||!key||!secret||!/^[A-Za-z0-9_-]+$/.test(cloud))
+    throw Error('Cloudinary free-account Script Properties are not configured');
+  return {cloud:cloud,key:key,secret:secret};
+}
+function syncOppsPreviewSha1_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_1,s,Utilities.Charset.UTF_8)
+    .map(b=>('0'+((b+256)%256).toString(16)).slice(-2)).join('');
+}
+function syncOppsPreviewSign_(params,secret) {
+  const query=Object.keys(params).sort().map(k=>k+'='+String(params[k])).join('&');
+  return syncOppsPreviewSha1_(query+secret);
+}
+function syncOppsPreviewSet_(tab,rowIndex,updates) {
+  Object.keys(updates).forEach(key=>{
+    const col=tab.headers.indexOf(key);
+    if(col<0)throw Error('Missing private Songs column: '+key);
+    tab.sheet.getRange(rowIndex+2,col+1).setValue(updates[key]);
+  });
+}
+function syncOppsPreviewEligibility_(song,mem,beta) {
+  const memberId=syncOppsPreviewC_(song,'Member ID');
+  const matches=mem.rows.filter(v=>syncOppsPreviewC_(v,'Member ID')===memberId);
+  if(matches.length!==1) return false;
+  const m=matches[0];
+  if(syncOppsPreviewC_(m,'Membership Status')!=='Active Paid' ||
+     !['$5 Standard','$10 Pro'].includes(syncOppsPreviewC_(m,'Patreon Tier')) ||
+     !syncOppsPreviewC_(m,'Eligibility Verified On'))return false;
+  if(new Date().getTime()<Date.parse(SYNC_OPPS_MP3_HOST.betaAccessEndUTC)){
+    const slots=beta.rows.filter(v=>syncOppsPreviewC_(v,'Member ID')===memberId);
+    if(slots.length!==1 || syncOppsPreviewC_(slots[0],'Invite Status')!=='Accepted' ||
+       syncOppsPreviewC_(slots[0],'Eligibility Verified')!=='Yes' ||
+       syncOppsPreviewC_(slots[0],'Patreon Email (PRIVATE)').toLowerCase()!==
+       syncOppsPreviewC_(m,'Patreon Email (PRIVATE)').toLowerCase())return false;
+  }
+  return true;
+}
+function syncOppsPreviewBlob_(raw,submissionId,slot) {
+  const rows=raw.rows.filter(r=>syncOppsPreviewC_(r,'Submission ID')===submissionId);
+  if(rows.length!==1)throw Error('Exactly one private Tally submission required');
+  const field='Song '+slot+': Upload authorized MP3 preview';
+  const privateCell=syncOppsPreviewC_(rows[0],field);
+  const matches=privateCell.match(/https:\/\/storage\.tally\.so\/[^\s<>"']+/gi)||[];
+  if(matches.length!==1)throw Error('Missing or unsupported private Tally upload attachment reference');
+  // Remove ordinary trailing punctuation of a pasted link, if any.
+  const url=matches[0].replace(/[),;]+$/,'');
+  if(!/^https:\/\/storage\.tally\.so\/[^@\s<>"']+/i.test(url))
+    throw Error('Private attachment storage hostname invalid');
+  const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true,followRedirects:true});
+  if(response.getResponseCode()!==200)
+    throw Error('Private Tally upload cannot be downloaded; secure attachment kept in review');
+  const blob=response.getBlob();
+  const bytes=blob.getBytes();
+  if(!bytes.length||bytes.length>SYNC_OPPS_MP3_HOST.maxBytes)
+    throw Error('Uploaded MP3 is empty or exceeds 10MB');
+  // Basic binary MP3 signature validation, NOT malware scanning or legal QA.
+  const b0=bytes[0]&255,b1=(bytes[1]||0)&255,b2=(bytes[2]||0)&255;
+  const hasID3=(b0===73 && b1===68 && b2===51);
+  const hasMpeg=(b0===255 && (b1&224)===224 && (b1&24)!==8);
+  if(!hasID3&&!hasMpeg)throw Error('Attachment is not recognizable MP3 binary');
+  return blob.setName('preview.mp3');
+}
+function syncOppsPreviewCloudinaryUpload_(blob) {
+  const auth=syncOppsPreviewCredentials_();
+  const timestamp=Math.floor(Date.now()/1000);
+  const publicId='preview_'+Utilities.getUuid().replace(/-/g,'');
+  const params={folder:SYNC_OPPS_MP3_HOST.folder,public_id:publicId,timestamp:timestamp};
+  const resp=UrlFetchApp.fetch(
+    'https://api.cloudinary.com/v1_1/'+encodeURIComponent(auth.cloud)+'/video/upload',
+    {method:'post',payload:{
+      file:blob,folder:params.folder,public_id:params.public_id,
+      timestamp:String(timestamp),api_key:auth.key,
+      signature:syncOppsPreviewSign_(params,auth.secret)
+    },muteHttpExceptions:true}
+  );
+  if(resp.getResponseCode()<200||resp.getResponseCode()>=300)
+    throw Error('Cloudinary MP3 upload failed (HTTP '+resp.getResponseCode()+')');
+  const body=JSON.parse(resp.getContentText());
+  const url=String(body.secure_url||'');
+  const expected='https://res.cloudinary.com/'+auth.cloud+'/video/upload/';
+  if(!url.startsWith(expected)||!/\.mp3(?:[?#]|$)/i.test(url)||
+     body.resource_type!=='video'||body.public_id!==SYNC_OPPS_MP3_HOST.folder+'/'+publicId)
+    throw Error('Public CDN response did not meet the approved preview URL rules');
+  return {url:url,id:body.public_id};
+}
+function syncOppsPreviewCloudinaryDestroy_(publicId) {
+  const auth=syncOppsPreviewCredentials_();
+  if(!new RegExp('^'+SYNC_OPPS_MP3_HOST.folder+'/preview_[a-f0-9]{32}$','i').test(publicId))
+    throw Error('Unrecognized Sync Opps preview asset ID');
+  const timestamp=Math.floor(Date.now()/1000);
+  const params={public_id:publicId,timestamp:timestamp,invalidate:'true'};
+  const resp=UrlFetchApp.fetch(
+    'https://api.cloudinary.com/v1_1/'+encodeURIComponent(auth.cloud)+'/video/destroy',
+    {method:'post',payload:{public_id:publicId,timestamp:String(timestamp),
+      api_key:auth.key,invalidate:'true',
+      signature:syncOppsPreviewSign_(params,auth.secret)},muteHttpExceptions:true}
+  );
+  if(resp.getResponseCode()<200||resp.getResponseCode()>=300)
+    throw Error('Cloudinary preview revocation failed (HTTP '+resp.getResponseCode()+')');
+  const result=String(JSON.parse(resp.getContentText()).result||'');
+  if(result!=='ok'&&result!=='not found')throw Error('Cloudinary preview revocation not confirmed');
+  return result;
+}
+function syncOppsHostAuthorizedMp3Previews() {
+  const lock=LockService.getScriptLock();
+  if(!lock.tryLock(25000))throw Error('Another catalog operation is underway');
+  try {
+    const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
+    const songs=syncOppsPreviewTable_(ss,'Songs');
+    const members=syncOppsPreviewTable_(ss,'Members');
+    const beta=syncOppsPreviewTable_(ss,'Beta 40');
+    const raw=syncOppsPreviewTable_(ss,'Tally Raw Responses');
+    const report={hosted:0,skipped:0,errors:[]};
+    for(let i=0;i<songs.rows.length&&report.hosted<SYNC_OPPS_MP3_HOST.stagingBatchMax;i++){
+      const s=songs.rows[i];
+      if(syncOppsPreviewC_(s,'Music Source')!=='Managed MP3 Preview'||
+         syncOppsPreviewC_(s,'Preview Host Authorization (PRIVATE)')!=='Approved Preview'||
+         syncOppsPreviewC_(s,'Preview Host Public ID (PRIVATE)'))continue;
+      const songId=syncOppsPreviewC_(s,'Song ID');
+      try {
+        if(syncOppsPreviewC_(s,'Catalog Status')!=='Hidden' ||
+           syncOppsPreviewC_(s,'Member Listing Authorization')!=='Yes' ||
+           !syncOppsPreviewEligibility_(s,members,beta)){
+          report.skipped++;continue;
+        }
+        const sid=syncOppsPreviewC_(s,'Tally Submission ID');
+        const slot=[1,2].find(n=>syncOppsStableId_('SONG',sid+':'+n)===songId);
+        if(!slot)throw Error('Song and private upload submission IDs do not match');
+        // Explicit manual Songs approval is mandatory BEFORE any asset goes public.
+        const blob=syncOppsPreviewBlob_(raw,sid,slot);
+        const hosted=syncOppsPreviewCloudinaryUpload_(blob);
+        syncOppsPreviewSet_(songs,i,{
+          'Authorized Embed Reference':hosted.url,
+          'Preview Host Public ID (PRIVATE)':hosted.id,
+          'Preview Host Updated On (PRIVATE)':new Date()
+        });
+        report.hosted++;
+      }catch(e){report.errors.push({songId:songId,error:String(e)});}
+    }
+    Logger.log('Preview hosting (private review): '+JSON.stringify(report));
+    return report;
+  }finally{lock.releaseLock();}
+}
+function syncOppsRevokeHostedPreviews_() {
+  const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
+  const songs=syncOppsPreviewTable_(ss,'Songs');
+  const report={revoked:0,errors:[]};
+  for(let i=0;i<songs.rows.length;i++){
+    const s=songs.rows[i];
+    const id=syncOppsPreviewC_(s,'Preview Host Public ID (PRIVATE)');
+    if(!id)continue;
+    if(!['Paused','Withdrawn'].includes(syncOppsPreviewC_(s,'Catalog Status')) &&
+       syncOppsPreviewC_(s,'Preview Host Authorization (PRIVATE)')!=='Withdraw / Delete')continue;
+    const songId=syncOppsPreviewC_(s,'Song ID');
+    try {
+      syncOppsPreviewCloudinaryDestroy_(id);
+      syncOppsPreviewSet_(songs,i,{
+        'Authorized Embed Reference':'',
+        'Preview Host Public ID (PRIVATE)':'',
+        'Preview Host Authorization (PRIVATE)':'Do Not Host',
+        'Preview Host Updated On (PRIVATE)':new Date()
+      });
+      report.revoked++;
+    } catch(e) {report.errors.push({songId:songId,error:String(e)});}
+  }
+  if(report.revoked||report.errors.length)
+    Logger.log('MP3 preview withdrawal check: '+JSON.stringify(report));
+  return report;
 }
