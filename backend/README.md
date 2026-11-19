@@ -39,3 +39,7 @@ A confirmed withdrawal updates the private Songs status. On subsequent requests,
 - The Google Song Removal processor has already queued one test withdrawal and sent an email for identity verification; the test song remains Hidden until confirmation is clicked.
 - Static GitHub Pages file publication and the site design are live, but real-song source playback is not certified.
 - This bridge provides no administrative editing API and does not create an Apps Script source-code development bridge. Direct programming of Apps Script project source still requires Google Apps Script editor/authorized API actions.
+
+## Managed MP3 and DISCO compatibility (November 19, 2026)
+
+The existing published Tally member form supports optional MP3 preview uploads, but real public-preview hosting is not deployed yet. Use the [complete existing-intake source](SyncOpps_Tally_Processor_v1.7.gs) and [installation, quota, withdrawal and DISCO guide](README_Managed_MP3_v1.7.md). No new project, script trigger or Google Sheet is allowed. Preserve the current live feed /exec deployment URL when upgrading its approved-source allowlist. Only independently reviewed and authorized music is eligible to go public.
