@@ -353,7 +353,7 @@ function SO_bridgeVerifyDeploy_(s) {
         // a third-party script, not an XHR JSON response. Parse the exact
         // trusted callback without eval, never arbitrary JavaScript.
         const payload=String(res.getContentText()||'').trim();
-        const match=payload.match(/^window\\.syncOppsApprovedFeedV1\\((\\{[\\s\\S]*\\})\\);?$/);
+        const match=payload.match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
         if(!match)throw Error('Existing feed response is not approved JSONP');
         const body=JSON.parse(match[1]);
         if(body && body.schemaVersion===1 && Array.isArray(body.songs)){
