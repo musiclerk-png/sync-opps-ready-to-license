@@ -249,7 +249,8 @@ function SO_bridgeSource_(r) {
 function SO_bridgePrecheck_(s) {
   const file=DriveApp.getFileById(s.request_file_id),r=JSON.parse(file.getBlob().getDataAsString());
   const email=String(Session.getEffectiveUser().getEmail()||'').toLowerCase();
-  if(email&&file.getOwner())SO_bridgeAssert_(String(file.getOwner().getEmail()||'').toLowerCase()===email,
+  SO_bridgeAssert_(!!email,'Cannot verify authorized request owner; refusing deployment.');
+  SO_bridgeAssert_(!!file.getOwner() && String(file.getOwner().getEmail()||'').toLowerCase()===email,
     'Request must be owned by bridge Google account.');
   SO_bridgeAssert_(r.schema_version===1&&r.status==='READY','Bad request schema/status.');
   SO_bridgeAssert_(/^[a-z0-9-]{8,64}$/.test(r.request_id||''),'Bad request ID.');
@@ -264,6 +265,8 @@ function SO_bridgePrecheck_(s) {
   SO_bridgeAssert_(/^[a-f0-9]{64}$/.test(r.source_sha256||''),'Invalid source SHA.');
   SO_bridgeAssert_(r.expected_head_sha256==='ABSENT'||/^[a-f0-9]{64}$/.test(r.expected_head_sha256||''),
     'Invalid expected HEAD SHA.');
+  SO_bridgeAssert_(r.target_file!=='Code'||r.expected_head_sha256!=='ABSENT',
+    'Existing production Code file cannot be created from an empty baseline.');
   SO_bridgeAssert_(r.approval==='APPROVED_SOURCE_CHANGE',
     'Source change has not been marked reviewed and approved.');
   const folder=SO_bridgeFolder_();
@@ -304,8 +307,9 @@ function SO_bridgeApply_(s) {
   const next=current.map(x=>x.name===s.target_file&&x.type==='SERVER_JS'?
     {name:x.name,type:'SERVER_JS',source:source}:x);
   if(s.expected_sha==='ABSENT')next.push({name:s.target_file,type:'SERVER_JS',source:source});
+  s.updated_head=true;SO_bridgeCheckpoint_(s,'HEAD_UPDATE_ATTEMPTED');
   SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+'/content',{files:next});
-  s.updated_head=true;s.phase='VERIFY_HEAD';return SO_bridgeCheckpoint_(s,'HEAD_UPDATED');
+  s.phase='VERIFY_HEAD';return SO_bridgeCheckpoint_(s,'HEAD_UPDATED');
 }
 function SO_bridgeVerifyHead_(s) {
   const content=SO_bridgeContent_(s.target_script_id);
@@ -327,11 +331,12 @@ function SO_bridgeDeploy_(s) {
     'Existing deployment version changed before update.');
   SO_bridgeAssert_(SO_bridgeWebUrl_(existing)===SO_BRIDGE.feedUrl,'Canonical URL mismatch.');
   const config=existing.deploymentConfig||{};
+  s.updated_deployment=true;SO_bridgeCheckpoint_(s,'DEPLOYMENT_UPDATE_ATTEMPTED');
   SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+
     '/deployments/'+encodeURIComponent(s.deployment_id),
     {deploymentConfig:{scriptId:s.target_script_id,versionNumber:s.new_version,
       manifestFileName:config.manifestFileName||'appsscript',description:config.description||''}});
-  s.updated_deployment=true;s.phase='VERIFY_DEPLOYMENT';
+  s.phase='VERIFY_DEPLOYMENT';
   return SO_bridgeCheckpoint_(s,'DEPLOYMENT_UPDATED');
 }
 function SO_bridgeVerifyDeploy_(s) {
@@ -357,15 +362,19 @@ function SO_bridgeRollback_(s) {
   try {
     if(s.updated_deployment&&s.deployment_id) {
       const d=SO_bridgeDeployment_(s.target_script_id,s.deployment_id),config=d.deploymentConfig||{};
-      SO_bridgeAssert_(Number(config.versionNumber)===Number(s.new_version),
-        'Deployment was changed by another operator; do not overwrite.');
-      const backup=JSON.parse(DriveApp.getFileById(s.backup_id).getBlob().getDataAsString());
-      const old=backup.deployment.deploymentConfig||{};
-      SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+
-        '/deployments/'+encodeURIComponent(s.deployment_id),
-        {deploymentConfig:{scriptId:s.target_script_id,versionNumber:s.old_version,
-          manifestFileName:old.manifestFileName||'appsscript',description:old.description||''}});
-      result.deployment_restored=true;
+      if(Number(config.versionNumber)===Number(s.old_version)) {
+        result.deployment_restored=true; // No mutation happened or already rolled back.
+      } else {
+        SO_bridgeAssert_(Number(config.versionNumber)===Number(s.new_version),
+          'Deployment was changed by another operator; do not overwrite.');
+        const backup=JSON.parse(DriveApp.getFileById(s.backup_id).getBlob().getDataAsString());
+        const old=backup.deployment.deploymentConfig||{};
+        SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+
+          '/deployments/'+encodeURIComponent(s.deployment_id),
+          {deploymentConfig:{scriptId:s.target_script_id,versionNumber:s.old_version,
+            manifestFileName:old.manifestFileName||'appsscript',description:old.description||''}});
+        result.deployment_restored=true;
+      }
     }
   }catch(e){result.errors.push('Deployment: '+String(e));}
   try {
@@ -373,11 +382,16 @@ function SO_bridgeRollback_(s) {
       const backup=JSON.parse(DriveApp.getFileById(s.backup_id).getBlob().getDataAsString());
       const live=SO_bridgeContent_(s.target_script_id);
       const current=SO_bridgeFile_(live.files,s.target_file);
-      SO_bridgeAssert_(current&&SO_bridgeHash_(String(current.source||''))===s.source_sha,
-        'HEAD changed by another operator; do not overwrite.');
-      SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+'/content',
-        {files:backup.files});
-      result.head_restored=true;
+      const liveSha=current?SO_bridgeHash_(String(current.source||'')):'ABSENT';
+      if(liveSha===s.expected_sha) {
+        result.head_restored=true; // Mutation was not applied or was already undone.
+      } else {
+        SO_bridgeAssert_(liveSha===s.source_sha,
+          'HEAD changed by another operator; do not overwrite.');
+        SO_bridgeApi_('PUT','/projects/'+encodeURIComponent(s.target_script_id)+'/content',
+          {files:backup.files});
+        result.head_restored=true;
+      }
     }
   }catch(e){result.errors.push('HEAD: '+String(e));}
   s.rollback=result;s.phase='FAIL';
