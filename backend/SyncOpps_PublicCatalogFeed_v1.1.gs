@@ -107,16 +107,30 @@ function soPublicSnapshotV1_() {
     const genre=soPublicSafeTextV1_(soPublicCellV1_(st,'Genre'),70);
     const source=soPublicSafeTextV1_(soPublicCellV1_(st,'Music Source'),60);
     if (!title || !artist || !genre || !source) return;
+    // Public Staging must never switch a managed MP3 to another source category
+    // to bypass the private hosting authorization and asset-ID checks.
+    if(source.toLowerCase()!==soPublicCellV1_(song,'Music Source').toLowerCase())return;
     // One approved private inquiry route, with only public song-identification parameters.
     const inquiry=soPublicCellV1_(st,'Buyer Inquiry Form URL (No Public Email)');
     if (!/^https:\/\/tally\.so\/r\/jeoYaE(?:[?#]|$)/.test(inquiry)) return;
     const inquiryUrl='https://tally.so/r/jeoYaE?song_id='+encodeURIComponent(sid)
       +'&song_title='+encodeURIComponent(title)+'&artist='+encodeURIComponent(artist);
-    const player=soPublicPlayerV1_(source,
-      soPublicCellV1_(song,'Authorized Embed Reference') ||
+    const hostedReference=soPublicCellV1_(song,'Authorized Embed Reference');
+    const managed=source.toLowerCase().indexOf('managed mp3 preview')>=0;
+    let playerUrl=hostedReference ||
       soPublicCellV1_(st,'Stream URL / Embed ID') ||
-      soPublicCellV1_(song,'Stream URL'));
-    if (!player) return;
+      soPublicCellV1_(song,'Stream URL');
+    if(managed){
+      // Never trust the public staging URL alone for managed audio:
+      // it can outlive the private Cloudinary asset or its authorization.
+      const assetId=soPublicCellV1_(song,'Preview Host Public ID (PRIVATE)');
+      if(soPublicCellV1_(song,'Preview Host Authorization (PRIVATE)')!=='Approved Preview' ||
+         !/^sync_opps_catalog_previews\/preview_[a-f0-9]{32}$/i.test(assetId) ||
+         !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3'))return;
+      playerUrl=hostedReference;
+    }
+    const player=soPublicPlayerV1_(source,playerUrl);
+    if (!player || (managed&&player.type!=='mp3')) return;
     const owners={
       writers:soPublicSharesV1_(soPublicCellV1_(st,'Composition Credits / Splits (Consent)')),
       publishers:soPublicSharesV1_(soPublicCellV1_(st,'Publisher Owners / Splits (Consent)')),
