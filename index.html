@@ -89,7 +89,19 @@ function safeUrl(raw,kind) {
 function normalizeSong(x) {
   if(!x || x.catalogStatus!=='Published' || x.publicReview!=='Approved') return null;
   if(!/^[A-Za-z0-9_-]{6,90}$/.test(x.id||'')) return null;
-  if(!x.title || !x.artist || !x.source || !x.player || !safeUrl(x.buyerInquiryUrl||'','mp3')) return null;
+  if(!x.title || !x.artist || !x.source || !x.player) return null;
+  // Fail closed on a misconfigured feed link; buyers must reach only the
+  // approved inquiry form for this specific public catalog song.
+  let verifiedInquiryUrl='';
+  try {
+    const inquiry=new URL(String(x.buyerInquiryUrl||''));
+    if(inquiry.protocol!=='https:' || inquiry.hostname!=='tally.so' ||
+       inquiry.username || inquiry.password || inquiry.port ||
+       inquiry.pathname!=='/r/jeoYaE' ||
+       inquiry.searchParams.get('song_id')!==x.id)
+      return null;
+    verifiedInquiryUrl=inquiry.toString();
+  } catch(e) { return null; }
   const type=String(x.player.type||'').toLowerCase();
   if(!['soundcloud','spotify','youtube','bandcamp','apple','disco','mp3'].includes(type)) return null;
   const url=safeUrl(x.player.url,type);
@@ -102,7 +114,7 @@ function normalizeSong(x) {
   const owners = x.owners||{};
   const shares=k=>Array.isArray(owners[k]) ? owners[k].slice(0,20).filter(q=>Array.isArray(q)&&q.length===2).map(q=>[clean(q[0]),clean(q[1])]):[];
   return {
-    id:x.id,title:clean(x.title),artist:clean(x.artist),genre:clean(x.genre),moods:Array.isArray(x.moods)?x.moods.slice(0,3).map(clean):[],uses:Array.isArray(x.uses)?x.uses.slice(0,5).map(clean):[],source:clean(x.source),duration:clean(x.duration),art:'orange',instrumental:clean(x.instrumental),explicit:clean(x.explicit),year:clean(x.year),isrc:clean(x.isrc),iswc:clean(x.iswc),notes:clean(x.notes),player:{type,url}, owners:{writers:shares('writers'),publishers:shares('publishers'),master:shares('master'),pro:clean(owners.pro),clearance:clean(owners.clearance)},buyerInquiryUrl:safeUrl(x.buyerInquiryUrl||'','mp3')||''
+    id:x.id,title:clean(x.title),artist:clean(x.artist),genre:clean(x.genre),moods:Array.isArray(x.moods)?x.moods.slice(0,3).map(clean):[],uses:Array.isArray(x.uses)?x.uses.slice(0,5).map(clean):[],source:clean(x.source),duration:clean(x.duration),art:'orange',instrumental:clean(x.instrumental),explicit:clean(x.explicit),year:clean(x.year),isrc:clean(x.isrc),iswc:clean(x.iswc),notes:clean(x.notes),player:{type,url}, owners:{writers:shares('writers'),publishers:shares('publishers'),master:shares('master'),pro:clean(owners.pro),clearance:clean(owners.clearance)},buyerInquiryUrl:verifiedInquiryUrl
   };
 }
 async function readLiveFeed(endpoint){
