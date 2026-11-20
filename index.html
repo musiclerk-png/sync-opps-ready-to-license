@@ -108,8 +108,11 @@ function normalizeSong(x) {
   if(!url)return null;
   // Never permit a private Tally bearer-token URL to masquerade as an
   // approved managed preview. Only staged Cloudinary .mp3 delivery is valid.
-  if(String(x.source||'').toLowerCase()==='managed mp3 preview' &&
-     (type!=='mp3'||!/^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(url)))return null;
+  const managed=String(x.source||'').toLowerCase()==='managed mp3 preview';
+  // The audio-file player is reserved for an authorized managed Cloudinary MP3.
+  if((type==='mp3')!==managed)return null;
+  if(managed &&
+     !/^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(url))return null;
   const clean=s=>String(s??'').slice(0,400);
   const owners = x.owners||{};
   const shares=k=>Array.isArray(owners[k]) ? owners[k].slice(0,20).filter(q=>Array.isArray(q)&&q.length===2).map(q=>[clean(q[0]),clean(q[1])]):[];
