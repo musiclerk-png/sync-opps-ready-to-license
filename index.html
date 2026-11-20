@@ -212,13 +212,17 @@ $('songGrid').addEventListener('click',e=>{let t=e.target.closest('[data-play],[
 $('modalContent').addEventListener('click',async e=>{const c=e.target.closest('[data-copy]'),t=e.target.closest('[data-modal-contact]');if(t){const s=SONGS.find(x=>x.id===t.dataset.modalContact);if(s)contact(s);}else if(c){const s=SONGS.find(x=>x.id===c.dataset.copy);if(s){try{await navigator.clipboard.writeText(inquiryText(s));toast('Inquiry template copied.');}catch{toast('Copy unavailable in this browser. Select the template text manually.');}}}else if(e.target.id==='modalDone')closeModal();});
 $('modalClose').addEventListener('click',closeModal);$('modalLayer').addEventListener('click',e=>{if(e.target.id==='modalLayer')closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modalLayer').hidden)closeModal();});
 for(const id of ['searchInput','genreInput','moodInput','useInput','sourceInput'])$(id).addEventListener(id==='searchInput'?'input':'change',()=>{activeId=null;render();});$('resetFilters').addEventListener('click',reset);$('emptyReset').addEventListener('click',reset);$('mobileCatalog').addEventListener('click',()=>location.hash='#catalog');
-// Recheck the live feed when a visitor returns to a tab. This helps suppress
-// withdrawn tracks without constant polling or a stale JSON fallback.
+// A Paused or Withdrawn song must not remain playable indefinitely in a
+// visitor's already-open tab. The private server still independently blocks
+// inquiries, and the live feed remains the sole source of published songs.
 function refreshCatalogOnReturn(){
-  if(!document.hidden && Date.now()-lastCatalogRefreshAt>60000)loadApprovedCatalog();
+  if(!document.hidden && Date.now()-lastCatalogRefreshAt>=60000)loadApprovedCatalog();
 }
 document.addEventListener('visibilitychange',refreshCatalogOnReturn);
 window.addEventListener('focus',refreshCatalogOnReturn);
+// At most one refresh per minute while visible; none while in a hidden tab.
+// loadApprovedCatalog removes withdrawn players and fails closed on feed errors.
+window.setInterval(refreshCatalogOnReturn,30000);
 loadApprovedCatalog();
 </script>
 </body>
