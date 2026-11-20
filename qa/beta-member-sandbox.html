@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:; img-src data:; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'">
+<title>Sync Opps. | Isolated Beta QA Experience</title>
+<style>
+:root{--ink:#211911;--muted:#725b4f;--orange:#a7420b;--dark:#241911;--line:#e9d6c6;--pale:#fff8f1;--cream:#fffdfa;--warm:#f7e7d8;--green:#226843;--danger:#9d3131;--shadow:0 18px 50px rgba(64,37,20,.08)}
+*{box-sizing:border-box}html{font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif}body{margin:0;background:var(--pale);color:var(--ink);line-height:1.52}button,input,textarea,select{font:inherit}button,a{touch-action:manipulation}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid #ec8c48;outline-offset:3px}a{color:inherit}.wrap{width:min(1090px,calc(100% - 40px));margin:auto}
+.ribbon{background:#241911;color:#fff8ed;padding:10px 14px;text-align:center;font-size:12px;font-weight:760;letter-spacing:.045em}.ribbon strong{color:#ffc194}.header{border-bottom:1px solid var(--line);background:rgba(255,253,250,.96)}.nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px}.logo{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:830;letter-spacing:-.045em}.logo-symbol{width:45px;height:45px;flex:0 0 auto;display:grid;place-items:center;background:#f9dfcb;color:var(--orange);font-size:29px;border-radius:50%;font-weight:900}.nav-note{font-size:12px;font-weight:740;text-transform:uppercase;color:var(--orange);letter-spacing:.08em}
+main{padding:44px 0 70px}.eyebrow{font-size:12px;letter-spacing:.14em;font-weight:850;text-transform:uppercase;color:var(--orange)}h1{font-size:clamp(33px,4.4vw,52px);line-height:1.1;letter-spacing:-.055em;margin:12px 0 14px}h2{font-size:23px;line-height:1.2;letter-spacing:-.03em;margin:0 0 10px}h3{font-size:16px;margin:0 0 9px}p{margin:0 0 14px}.intro{max-width:810px;color:var(--muted);font-size:16px}.layout{margin-top:29px;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(270px,1fr);gap:22px;align-items:start}.panel{border:1px solid var(--line);border-radius:18px;background:var(--cream);box-shadow:var(--shadow);padding:26px}.chip{display:inline-flex;align-items:center;border:1px solid #e6c6ad;background:#fff1e5;color:#82380e;border-radius:99px;padding:5px 11px;font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase}.chip.green{background:#edf8f0;border-color:#b9dfc4;color:var(--green)}.chip.red{background:#fff0ee;border-color:#ecbdb5;color:var(--danger)}.card-hero{background:linear-gradient(125deg,#f4b780,#de7832 40%,#7d3d21 100%);border-radius:13px;height:132px;margin-bottom:22px;display:flex;align-items:center;padding:20px;color:#fff8f2}.wave-art{width:100%;height:54px;display:flex;gap:5px;align-items:center;justify-content:center;opacity:.85}.wave-art span{height:var(--h);width:7px;border-radius:20px;background:#fff8ed}.song-title{font-size:28px;margin:10px 0 4px;letter-spacing:-.05em}.byline{font-size:13px;color:var(--muted);font-weight:630}.meta{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 20px}.meta span{font-size:12px;padding:6px 10px;background:#f5eadf;border-radius:9px;color:#60483b}.player-area{border:1px solid #ead8c8;border-radius:13px;padding:16px;background:#fff8f3}.player-area label{display:block;font-size:12px;font-weight:830;color:#744c36;margin-bottom:9px}audio{width:100%;height:52px;display:block}.actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}.btn{border:1px solid transparent;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;min-height:45px;padding:11px 17px;font-size:13px;font-weight:820;line-height:1.2}.primary{background:var(--orange);color:white}.primary:hover{background:#883007}.secondary{background:#fff;border-color:#b8744e;color:#963d0f}.secondary:hover{background:#fff2e8}.plain{border-color:var(--line);background:#fff;color:#45342a}.btn:disabled{opacity:.45;cursor:not-allowed}.footnote{font-size:12px;color:var(--muted);margin:13px 0 0}.sidebar .stat{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #eddccf;font-size:13px}.sidebar .stat:last-child{border-bottom:none}.sidebar .stat strong{text-align:right}.field{margin-top:16px}label{display:block;font-size:13px;font-weight:750;margin:0 0 7px}select,input,textarea{display:block;width:100%;background:white;border:1px solid #d8c2b0;border-radius:9px;color:var(--ink);padding:11px 12px;min-height:44px}textarea{min-height:104px;resize:vertical}.sidebar .btn{margin-top:13px;width:100%}.hint{color:var(--muted);font-size:12px;margin-top:10px}.notice{padding:20px;border:1px solid #e7c8a9;border-radius:14px;background:#fff3e6;color:#684b31}.notice strong{display:block;margin-bottom:5px}.notice[hidden],.track[hidden],.empty[hidden],.status-text[hidden]{display:none}.ledger{margin-top:24px}.ledger ol{margin:0;padding-left:19px;color:var(--muted);font-size:12px}.ledger li{margin:8px 0}.empty{min-height:330px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}.empty h2{margin-top:10px}.empty p{max-width:500px;color:var(--muted)}.empty-icon{font-size:42px;color:#bb774c}.site-footer{border-top:1px solid var(--line);background:#fffdfa;color:var(--muted);padding:20px 0;font-size:12px}
+dialog{border:none;border-radius:18px;padding:0;width:min(590px,calc(100% - 26px));max-height:90vh;box-shadow:0 25px 80px #13090055;background:#fffdfa;color:var(--ink)}dialog::backdrop{background:#1e100bbc}.modal{padding:26px;overflow:auto;max-height:90vh}.modal-head{display:flex;gap:15px;justify-content:space-between;align-items:start;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:18px}.modal-head h2{margin-bottom:4px}.icon-btn{border:1px solid var(--line);border-radius:50%;background:white;width:36px;height:36px;font-size:22px;line-height:1;flex-shrink:0}.rights-row{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}.rights-row span{font-size:12px;color:var(--muted)}.rights-row strong{font-size:14px}.rights-row .percent{font-weight:860;color:var(--orange)}.rights-note{font-size:12px;color:#684e3d;padding:14px;background:#fff1e3;border-radius:10px;margin:16px 0 0}.result{margin-top:18px;padding:15px;border-radius:12px;background:#edf7ee;border:1px solid #acd7bc;color:#1c5b35;font-weight:720}.result[hidden]{display:none}
+@media(max-width:780px){.layout{grid-template-columns:1fr}.wrap{width:min(100% - 28px,640px)}main{padding-top:27px}.panel{padding:21px}.nav{min-height:64px}.logo{font-size:19px}.nav-note{font-size:10px}}@media(max-width:430px){.actions{display:grid;grid-template-columns:1fr}.btn{width:100%}.ribbon{font-size:10px}.panel{padding:17px}.song-title{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="ribbon"><strong>ISOLATED QA MODE</strong> | Synthetic music and fictional rights | No emails | No real publication</div>
+<div class="header"><div class="wrap nav"><div class="logo"><span class="logo-symbol" aria-hidden="true">S</span><span>Sync Opps. <small style="font-size:14px;font-weight:580;font-style:italic">Ready to License</small></span></div><div class="nav-note">Beta testing workspace</div></div></div>
+<main class="wrap">
+ <div class="eyebrow">Buyer experience test / November 2026</div>
+ <h1>Catalog QA: First Member Journey</h1>
+ <p class="intro">This isolated preview treats the existing beta applicant as verified for <strong>testing only</strong>. The track, rights owners, audio, and inquiries shown below are synthetic. Nothing here uses the production catalog, live Tally buyer form, Cloudinary, or a real email address.</p>
+ <div class="layout">
+  <section class="panel" aria-label="Synthetic catalog listing">
+   <div id="trackCard" class="track">
+    <div class="card-hero" aria-hidden="true"><div class="wave-art"><span style="--h:23%"></span><span style="--h:57%"></span><span style="--h:90%"></span><span style="--h:45%"></span><span style="--h:77%"></span><span style="--h:100%"></span><span style="--h:55%"></span><span style="--h:84%"></span><span style="--h:41%"></span><span style="--h:71%"></span><span style="--h:26%"></span></div></div>
+    <span class="chip green">QA-approved test listing</span>
+    <h2 class="song-title">Signal Check</h2>
+    <p class="byline">QA Example Artist | Synthetic instrumental | Song ID: SONG-QAONLY00000001</p>
+    <div class="meta"><span>Cinematic</span><span>Instrumental</span><span>10-second test audio</span><span>Film &amp; advertising</span></div>
+    <div class="player-area"><label for="testPlayer">In-page audio playback, locally generated WAV</label><audio id="testPlayer" controls preload="metadata" aria-label="Synthetic test audio"></audio></div>
+    <div class="actions"><button id="licenseButton" class="btn secondary" type="button">Licensing Info</button><button id="inquiryButton" class="btn primary" type="button">Send Licensing Inquiry (Test)</button></div>
+    <p class="footnote">This player contains a newly generated test tone, not a licensed song. Playback is local to your browser.</p>
+   </div>
+   <div id="blockedCard" class="empty" hidden role="status" aria-live="polite"><div class="empty-icon" aria-hidden="true">&#9679;</div><h2>0 test listings available</h2><p id="blockedReason">This QA scenario blocks catalog listing and buyer inquiries.</p><span class="chip red">Fail-closed state</span></div>
+  </section>
+  <aside class="sidebar">
+   <section class="panel" aria-label="QA membership and scenario controls">
+    <div class="eyebrow">Simulated beta member</div><h2>Eligibility</h2>
+    <span class="chip green">QA assumed verified</span>
+    <div class="stat"><span>Real application</span><strong>1 existing application</strong></div>
+    <div class="stat"><span>Test membership</span><strong>Active $5 Standard</strong></div>
+    <div class="stat"><span>Beta position</span><strong>Slot 1, test only</strong></div>
+    <div class="stat"><span>Visible QA listings</span><strong id="listingCount">1</strong></div>
+    <div class="stat"><span>Mock inquiries captured</span><strong id="inquiryCount">0</strong></div>
+    <div class="field"><label for="scenario">Choose a workflow scenario</label>
+     <select id="scenario">
+      <option value="approved">Approved test member and track</option>
+      <option value="unverified">Member is not verified</option>
+      <option value="beta">Beta invitation withdrawn</option>
+      <option value="hosting">MP3 hosting approval pending</option>
+      <option value="rights">Rights display consent withdrawn</option>
+      <option value="paused">Song paused</option>
+      <option value="withdrawn">Song withdrawn</option>
+     </select></div>
+    <button id="applyScenario" class="btn primary" type="button">Apply Test Scenario</button>
+    <button id="resetScenario" class="btn plain" type="button">Reset to Approved Test State</button>
+    <p class="hint">Scenario changes are temporary and affect only this page. No source database is updated.</p>
+   </section>
+   <section class="panel ledger" aria-label="Local QA activity log"><h3>Local activity log</h3><ol id="activityLog" aria-live="polite"></ol><p class="hint">No personal details or entered inquiry text are stored or sent.</p></section>
+  </aside>
+ </div>
+</main>
+<div class="site-footer"><div class="wrap">Sync Opps. | Isolated buyer catalog QA preview. Not a music license, public catalog listing, Patreon verification, or live email transaction.</div></div>
+<dialog id="licenseDialog" aria-labelledby="licenseTitle"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Track-specific rights</div><h2 id="licenseTitle">Licensing Info: Signal Check</h2><p class="hint">Fictional owner details, each rights category totals 100% separately.</p></div><button type="button" class="icon-btn" data-close="licenseDialog" aria-label="Close licensing information">&times;</button></div>
+ <h3>Composition and songwriter</h3><div class="rights-row"><div><strong>QA Example Writer</strong><div><span>Songwriter share</span></div></div><span class="percent">100%</span></div>
+ <h3>Publishing</h3><div class="rights-row"><div><strong>QA Example Publishing</strong><div><span>Publishing rights</span></div></div><span class="percent">100%</span></div>
+ <h3>Master / sound recording</h3><div class="rights-row"><div><strong>QA Example Masters</strong><div><span>Master ownership</span></div></div><span class="percent">100%</span></div>
+ <p class="rights-note">All parties and permissions above are fictional. This demonstration assumes a test-only one-stop licensing route. Real songs require independently verified owner splits, contacts, approval requirements, and public-display consent.</p>
+ </div></dialog>
+<dialog id="inquiryDialog" aria-labelledby="inquiryTitle"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Buyer inquiry simulation</div><h2 id="inquiryTitle">Inquire about Signal Check</h2><p class="hint">This form never sends email or contacts the real artist.</p></div><button type="button" class="icon-btn" data-close="inquiryDialog" aria-label="Close buyer inquiry">&times;</button></div>
+ <form id="inquiryForm" novalidate>
+  <div class="field"><label for="buyerName">Buyer name</label><input id="buyerName" name="buyerName" autocomplete="off" maxlength="80" placeholder="QA Buyer" required></div>
+  <div class="field"><label for="buyerEmail">Buyer email (test only)</label><input id="buyerEmail" name="buyerEmail" type="email" autocomplete="off" maxlength="160" placeholder="qa@example.invalid" required></div>
+  <div class="field"><label for="mediaType">Project media type</label><select id="mediaType" required><option value="">Select media type</option><option>Film</option><option>Series</option><option>Advertising</option><option>Podcast</option><option>Video game</option></select></div>
+  <div class="field"><label for="buyerMessage">Music usage and licensing needs</label><textarea id="buyerMessage" minlength="10" maxlength="1200" placeholder="Synthetic test inquiry, no real licensing request" required></textarea></div>
+  <div class="actions"><button class="btn primary" id="sendInquiry" type="submit">Capture Test Inquiry</button><button class="btn plain" type="button" data-close="inquiryDialog">Cancel</button></div>
+ </form><div class="result" id="inquiryResult" hidden role="status">Test inquiry captured in this browser only. No real email or buyer record was created.</div>
+ </div></dialog>
+<script>
+'use strict';
+(() => {
+ const $ = id => document.getElementById(id);
+ const audio = $('testPlayer');
+ const notes = {
+  approved:'QA approval is active for the synthetic sample.',
+  unverified:'The test member is not verified. Public listing and inquiry are blocked.',
+  beta:'The beta invitation is not accepted. The catalog suppresses this test listing.',
+  hosting:'Cloudinary MP3 authorization is Pending. No listing or inquiry is allowed.',
+  rights:'Rights-owner display consent is missing. No listing or inquiry is allowed.',
+  paused:'The song is Paused. Player and buyer inquiries have been withdrawn.',
+  withdrawn:'The song is Withdrawn. Player and buyer inquiries have been withdrawn.'
+ };
+ const state = {scenario:'approved', inquiries:0, audible:false, url:null, log:[], playEnded:false};
+ function log(message) {
+  state.log.unshift(message);
+  state.log.length = Math.min(state.log.length, 8);
+  const list = $('activityLog');list.replaceChildren();
+  state.log.forEach(msg=>{const li=document.createElement('li');li.textContent=msg;list.appendChild(li)});
+ }
+ function wav() {
+  const sampleRate=22050,duration=10,total=sampleRate*duration;
+  const bytes=new ArrayBuffer(44+total*2),view=new DataView(bytes);
+  const write=(p,text)=>{for(let i=0;i<text.length;i++)view.setUint8(p+i,text.charCodeAt(i));};
+  write(0,'RIFF');view.setUint32(4,36+total*2,true);write(8,'WAVE');write(12,'fmt ');
+  view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);
+  view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);
+  write(36,'data');view.setUint32(40,total*2,true);
+  let phase=0;const freqs=[220,247,294,330];
+  for(let i=0;i<total;i++){
+   const t=i/sampleRate,f=freqs[Math.min(3,Math.floor(t/2.5))];
+   phase+=2*Math.PI*f/sampleRate;
+   const env=Math.min(1,t/.16)*Math.min(1,(duration-t)/.45);
+   const soft=(Math.sin(phase)*.14+Math.sin(phase*2)*.025)*Math.max(0,env);
+   view.setInt16(44+i*2,Math.round(Math.max(-1,Math.min(1,soft))*32767),true);
+  }
+  return new Blob([bytes],{type:'audio/wav'});
+ }
+ function clearAudio(){
+  audio.pause();audio.removeAttribute('src');audio.load();state.audible=false;
+  if(state.url){URL.revokeObjectURL(state.url);state.url=null;}
+ }
+ function ensureAudio(){if(state.url)return;state.url=URL.createObjectURL(wav());audio.src=state.url;audio.load();}
+ function closeDialogs(){for(const dialog of document.querySelectorAll('dialog'))if(dialog.open)dialog.close();}
+ function render(){
+  const on=state.scenario==='approved';
+  $('trackCard').hidden=!on;$('blockedCard').hidden=on;
+  $('listingCount').textContent=on?'1':'0';
+  $('blockedReason').textContent=notes[state.scenario];
+  if(on)ensureAudio();else{clearAudio();closeDialogs();}
+ }
+ function changeScenario(next){
+  if(!Object.prototype.hasOwnProperty.call(notes,next))throw Error('Unknown QA scenario');
+  const prev=state.scenario;
+  state.scenario=next;$('scenario').value=next;render();
+  log((prev!==next?'Scenario changed: ':'Scenario checked: ')+next+'. '+(next==='approved'?'Synthetic listing allowed.':'Listing and inquiry blocked.'));
+ }
+ $('applyScenario').addEventListener('click',()=>changeScenario($('scenario').value));
+ $('resetScenario').addEventListener('click',()=>changeScenario('approved'));
+ $('licenseButton').addEventListener('click',()=>{if(state.scenario!=='approved')return;log('Opened fictional track-specific licensing disclosures.');$('licenseDialog').showModal();});
+ $('inquiryButton').addEventListener('click',()=>{if(state.scenario!=='approved')return; $('inquiryResult').hidden=true;$('inquiryForm').hidden=false;$('inquiryForm').reset();$('inquiryDialog').showModal();log('Opened local simulated buyer form.');});
+ for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',()=>$(button.dataset.close).close());
+ $('inquiryForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  if(state.scenario!=='approved'){log('Blocked inquiry: test listing no longer approved.');closeDialogs();return;}
+  const name=$('buyerName').value.trim(),email=$('buyerEmail').value.trim(),type=$('mediaType').value;
+  const message=$('buyerMessage').value.trim();
+  if(!name||!email||!type||message.length<10||!$('buyerEmail').checkValidity()){
+   $('buyerEmail').setCustomValidity(email&&!$('buyerEmail').validity.typeMismatch?'':'');
+   $('inquiryForm').reportValidity();return;
+  }
+  state.inquiries++;$('inquiryCount').textContent=String(state.inquiries);
+  $('inquiryForm').hidden=true;$('inquiryResult').hidden=false;
+  log('Captured one in-memory test inquiry. No email sent.');
+ });
+ audio.addEventListener('play',()=>{state.audible=true;log('Synthetic in-browser audio started.');});
+ audio.addEventListener('pause',()=>{state.audible=false;});
+ audio.addEventListener('ended',()=>{state.playEnded=true;state.audible=false;log('Synthetic playback finished.');});
+ window.addEventListener('pagehide',clearAudio);
+ Object.defineProperty(window,'__syncOppsQaStatus',{get:()=>Object.freeze({scenario:state.scenario,listingVisible:!$('trackCard').hidden,playerHasLocalUrl:!!state.url,playerPaused:audio.paused,mockInquiries:state.inquiries,remoteRequestsDesigned:0,audioEnded:state.playEnded})});
+ render();log('Isolated QA page loaded. No external network requests.');
+})();
+</script>
+</body>
+</html>
