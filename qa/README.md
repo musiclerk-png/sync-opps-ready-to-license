@@ -21,7 +21,7 @@ Tested using headless Chromium at desktop width 1365px and mobile width 390px on
 
 All passed: initial listing, local audio playback, licensing information modal with independent 100% ownership categories, one simulated buyer inquiry with zero emails sent, immediate player stop/URL removal on withdrawal, reset, five other blocked scenarios, mobile width without horizontal overflow, zero external HTTP requests, and zero JavaScript exceptions.
 
-The local test harness source can be manually exercised in Chromium or another modern browser. Do not enter real buyer details or real music-rights information into the form.
+The browser regression script is saved at [tests/test_beta_member_sandbox.py](./tests/test_beta_member_sandbox.py). Run `python -m pip install playwright && python -m playwright install chromium`, then `python qa/tests/test_beta_member_sandbox.py` from the repository root. The script loads the page HTML into an isolated headless Chromium tab, performs the interaction tests, and blocks no production resources because the page contains no external calls. Do not enter real buyer details or music-rights information into the test form.
 
 ## Provider player prepublication tool
 
