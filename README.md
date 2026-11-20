@@ -1,6 +1,16 @@
 # Sync Opps. | Ready to License Catalog
 
-Public website files for the limited **November 23, 2026** beta of the Sync Opps. Ready to License Catalog.
+Public website source for the Sync Opps. Ready to License Catalog. November 23, 2026 is a planning target, not a certified public launch: all real songs remain Hidden pending eligibility, ownership, and licensing checks.
+
+## November 20, 2026 buyer-facing homepage integration
+
+- The main `index.html` now follows the buyer-facing catalog preview more closely: “Find the right song for your next project,” Browse Music, How Music Licensing Works, buyer benefits, and a Contact Artist route. Member application messaging remains on the dedicated `beta/` path rather than dominating the buyer homepage.
+- Each approved song's Contact Artist button opens the existing vetted, song-specific Tally inquiry form directly. Songwriting/composition, publishing, and master ownership are displayed in separate categories inside Licensing Info.
+- The site still sources listings exclusively from the configured approved public feed and fails closed on feed errors. No illustrative buyer-preview songs, inline demo MP3s or test membership data were added to production.
+- Frontend MP3 playback accepts the Cloudinary delivery format only for a matching managed MP3 preview source. Unrelated providers keep their official embed formats.
+- Added `backend/tests/test_buyer_homepage.js`, with **18 passing checks** for copy, filters, secure Tally routing, valid media handling, and prevention of unapproved, withdrawn, or spoofed songs. The existing GitHub Actions safety workflow now runs it.
+- Verified the GitHub Pages build/deployment and catalog safety regression workflow both concluded **success** for commit `c44f1cc341199f8e7b127946acd4104f22a73b1a`. Signed-out visual/functional playback on actual approved music is still untested because no real track has been approved.
+- Production database readback still shows six Hidden songs, zero Published, zero accepted beta members, and zero staging entries ready for export.
 
 ## November 20, 2026 frontend safeguards
 
