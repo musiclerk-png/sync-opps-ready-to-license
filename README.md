@@ -2,6 +2,14 @@
 
 Public website files for the limited **November 23, 2026** beta of the Sync Opps. Ready to License Catalog.
 
+## November 20, 2026 frontend safeguards
+
+- Public Catalog Feed is deployed as existing Web App version 3 using the same `/exec` URL. Six private Songs entries remain Hidden, no accepted beta members, no approved public staging records.
+- Frontend `normalizeSong` rejects inquiry destinations other than the approved secure Tally form `https://tally.so/r/jeoYaE`, and requires the hidden `song_id` parameter to match the displayed catalog song ID. Eight synthetic malicious-link/valid-link cases passed.
+- An already-open visible catalog tab now checks the live server feed at most once every 60 seconds, in addition to when the tab regains focus. Withdrawn songs are removed from the DOM when refreshed; the server independently blocks ineligible buyer inquiries. This is not instantaneous withdrawal across every browser or CDN.
+- The refresh timer is suppressed in hidden tabs and the live site continues to fail closed (no static song fallback) when the feed cannot be retrieved. Seven synthetic timer/visibility tests passed.
+- The source and test verification above are **not** a substitute for signed-out real-browser playback, eligible-member and rights-owner approvals, or positive delivery of a buyer inquiry. No synthetic song was inserted into the actual private catalog.
+
 ## Current status
 
 **Development / prelaunch.** The website code and fail-closed live public feed configuration are committed. No song is publicly approved or listed yet. GitHub Pages is live and serving the buyer-facing site. Advance applications for the first-40 paid-member beta are open.
