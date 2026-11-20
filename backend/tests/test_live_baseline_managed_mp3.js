@@ -38,6 +38,12 @@ test('revocation clears authorized reference but leaves staging URL','Managed MP
 test('private ID differs from staged Cloudinary URL','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Public ID (PRIVATE)']='sync_opps_catalog_previews/preview_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',false);
 test('Cloudinary ID wrong folder','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Public ID (PRIVATE)']='other/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',false);
 test('private approved URL has wrong host','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://storage.tally.so/test.mp3',false);
+
+test('lookalike Cloudinary domain refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://res.cloudinary.com.evil.example/testcloud/video/upload/v123/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
+test('attacker hosted fake Cloudinary path refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://evil.example/testcloud/video/upload/v123/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
+test('Cloudinary wrong resource type refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://res.cloudinary.com/testcloud/image/upload/v123/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
+test('Cloudinary wrong delivery path refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://res.cloudinary.com/testcloud/video/authenticated/v123/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
+test('Cloudinary malformed unversioned path refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://res.cloudinary.com/testcloud/video/upload/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
 test('staging switches managed source to SoundCloud','Managed MP3 Preview',d=>{d['Public Staging'][0]['Music Source']='SoundCloud';d['Public Staging'][0]['Stream URL / Embed ID']='https://soundcloud.com/test/track';},false);
 test('approved normal SoundCloud unaffected','SoundCloud',null,true);
 test('SoundCloud staged source cannot masquerade as managed','SoundCloud',d=>d['Public Staging'][0]['Music Source']='Managed MP3 Preview',false);
