@@ -4,11 +4,19 @@ Public website files for the limited **November 23, 2026** beta of the Sync Opps
 
 ## November 20, 2026 frontend safeguards
 
-- Public Catalog Feed is deployed as existing Web App version 3 using the same `/exec` URL. Six private Songs entries remain Hidden, no accepted beta members, no approved public staging records.
+- Public Catalog Feed is deployed as existing Web App version 4 using the same `/exec` URL. Six private Songs entries remain Hidden, no accepted beta members, no approved public staging records.
 - Frontend `normalizeSong` rejects inquiry destinations other than the approved secure Tally form `https://tally.so/r/jeoYaE`, and requires the hidden `song_id` parameter to match the displayed catalog song ID. Eight synthetic malicious-link/valid-link cases passed.
 - An already-open visible catalog tab now checks the live server feed at most once every 60 seconds, in addition to when the tab regains focus. Withdrawn songs are removed from the DOM when refreshed; the server independently blocks ineligible buyer inquiries. This is not instantaneous withdrawal across every browser or CDN.
 - The refresh timer is suppressed in hidden tabs and the live site continues to fail closed (no static song fallback) when the feed cannot be retrieved. Seven synthetic timer/visibility tests passed.
 - The source and test verification above are **not** a substitute for signed-out real-browser playback, eligible-member and rights-owner approvals, or positive delivery of a buyer inquiry. No synthetic song was inserted into the actual private catalog.
+
+## November 20, 2026 backend hosting and buyer safety
+
+- Managed MP3 previews now require the actual `res.cloudinary.com` HTTPS delivery hostname and a versioned `video/upload` asset path, along with the private approval, exact Cloudinary public ID and stored authorized reference. A path on an unrelated or lookalike website cannot pass either public-feed or buyer-routing validation.
+- Existing Public Catalog Feed deployment was safely updated to **version 4** on the same Web App ID and URL through the Development Bridge, with live JSONP schema verification, backup, and no rollback. Beta + Buyer Intake source update independently completed with HEAD_VERIFIED and PASS; it did not create a new deployment.
+- **27 synthetic feed and buyer eligibility cases** and **9 synthetic buyer-delivery and no-retry cases** passed in isolated Node tests. No real email was sent, and these cases do not establish real signed-out browser playback.
+- [Catalog safety CI workflow](.github/workflows/catalog-safety.yml) was added to execute these test files when relevant code changes. The workflow definition has been committed; a successful GitHub Actions run has not yet been independently confirmed.
+- [Release gates](docs/Beta_Release_Gates_Nov_20_2026.md) describe actual paid-member, split-owner, consent, browser playback, inquiry delivery and withdrawal evidence required before making the first real song public.
 
 ## Current status
 
