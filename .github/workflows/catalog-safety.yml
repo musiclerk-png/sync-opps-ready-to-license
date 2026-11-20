@@ -33,3 +33,5 @@ jobs:
         run: node backend/tests/test_buyer_intake_delivery_simulated.js
       - name: Test Tally API timeouts, retries and fail-closed polling
         run: node backend/tests/test_tally_fetch_retry.js
+      - name: Test buyer-facing catalog design and secure inquiries
+        run: node backend/tests/test_buyer_homepage.js
