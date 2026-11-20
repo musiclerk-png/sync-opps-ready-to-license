@@ -124,7 +124,8 @@ function soPublicSnapshotV1_() {
       const assetId=soPublicCellV1_(song,'Preview Host Public ID (PRIVATE)');
       if(soPublicCellV1_(song,'Preview Host Authorization (PRIVATE)')!=='Approved Preview' ||
          !/^sync_opps_catalog_previews\/preview_[a-f0-9]{32}$/i.test(assetId) ||
-         !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3'))return;
+         !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3') ||
+         !/^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(hostedReference))return;
       playerUrl=hostedReference;
     }
     const player=soPublicPlayerV1_(source,playerUrl);
