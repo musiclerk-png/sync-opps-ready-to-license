@@ -31,3 +31,5 @@ jobs:
         run: node backend/tests/test_live_baseline_managed_mp3.js
       - name: Run synthetic buyer routing and idempotency tests
         run: node backend/tests/test_buyer_intake_delivery_simulated.js
+      - name: Test Tally API timeouts, retries and fail-closed polling
+        run: node backend/tests/test_tally_fetch_retry.js
