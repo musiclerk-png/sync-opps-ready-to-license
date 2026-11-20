@@ -9,7 +9,7 @@
 - **Tally beta form:** Published, one completed application. That application is Declined with Paid Eligibility Unverified and Identity Verification Pending. Do not reinterpret it as an approved member.
 - **Tally buyer inquiry form:** Published, one synthetic/test submission in the private sheet recorded as Blocked. No verified buyer delivery yet.
 - **Song removal:** One request Pending Verification. Do not treat it as owner-confirmed withdrawal.
-- **Public Feed:** Existing /exec deployment version 3 passed automated live JSONP verification on November 19. A further Cloudinary URL host guard update was submitted on November 20. Verify its final bridge audit and currently deployed version before changing this statement.
+- **Public Feed:** The existing /exec deployment version 4 passed the Development Bridge live JSONP verification on November 20. The Cloudinary URL host guard is active. No song was published. Buyer routing source was updated and hash-verified separately; confirm the final Drive audit before declaring that request complete.
 
 ## Gate 1. Real paid-member eligibility and beta admission
 - Patreon membership email, tier, payment status and verified-on date have been checked against Patreon or direct owner-admin evidence, not the applicant's claim.
