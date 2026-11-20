@@ -370,7 +370,8 @@ function soBBBuyerEligible_(songId,buyerEmail,buyerName,message,songs,staging,me
     const assetId=soBBC_(song,songs,'Preview Host Public ID (PRIVATE)');
     if(soBBC_(song,songs,'Preview Host Authorization (PRIVATE)')!=='Approved Preview'||
        !/^sync_opps_catalog_previews\/preview_[a-f0-9]{32}$/i.test(assetId)||
-       !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3'))
+       !hostedReference || !hostedReference.endsWith('/'+assetId+'.mp3') ||
+       !/^https:\/\/res\.cloudinary\.com\/[A-Za-z0-9_-]+\/video\/upload\/v\d+\/sync_opps_catalog_previews\/preview_[a-f0-9]{32}\.mp3$/i.test(hostedReference))
       return failure('Managed MP3 preview is not authorized or its active Cloudinary asset is missing');
     stream=hostedReference;
   }
