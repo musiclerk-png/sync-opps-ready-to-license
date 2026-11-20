@@ -216,14 +216,46 @@ function soBBForms_(){
   return {beta:beta.submissions,betaQuestions:beta.questions,
     buyer:buyer.submissions,buyerQuestions:buyer.questions};
 }
+/**
+ * Retry only transient transport failures and temporary HTTP responses.
+ * A bounded timeout avoids letting one hung connection consume the entire
+ * six-minute Apps Script execution. Nonretryable authorization, malformed
+ * responses and pagination failures still halt before any Sheet writes.
+ */
+function soBBFetchTallyPageWithRetry_(url,key,formId,page){
+  const transientHttp=[408,429,500,502,503,504];
+  const pausesMs=[1500,4500];
+  for(let attempt=1;attempt<=3;attempt++){
+    let retryReason='';
+    try{
+      const rsp=UrlFetchApp.fetch(url,{
+        method:'get',muteHttpExceptions:true,followRedirects:false,
+        timeoutSeconds:20,
+        headers:{Authorization:'Bearer '+key,'tally-version':SO_BB_V1.intakeFormat,
+          Accept:'application/json'}
+      });
+      const status=rsp.getResponseCode();
+      if(status===200)return rsp;
+      if(!transientHttp.includes(status) || attempt===3)
+        throw Error('Tally API '+formId+' returned HTTP '+status);
+      retryReason='HTTP '+status;
+    }catch(e){
+      const msg=String((e&&e.message)||e);
+      const transient=/Address unavailable|timed?\s*out|Timeout|Service unavailable|connection reset|connection refused|DNS error|socket/i.test(msg);
+      if(!transient || attempt===3)throw e;
+      retryReason='temporary network error';
+    }
+    console.warn('Tally '+formId+' page '+page+': '+retryReason+'; retry '+(attempt+1)+' of 3.');
+    Utilities.sleep(pausesMs[attempt-1]);
+  }
+  throw Error('Tally '+formId+' request could not complete.');
+}
 function soBBFetchForm_(formId,key){
   let submissions=[], questions=[],page=1,more=false;
   do{
     const url='https://api.tally.so/forms/'+encodeURIComponent(formId)+
       '/submissions?filter=completed&limit='+SO_BB_V1.pageSize+'&page='+page;
-    const rsp=UrlFetchApp.fetch(url,{method:'get',muteHttpExceptions:true,followRedirects:false,
-      headers:{Authorization:'Bearer '+key,'tally-version':SO_BB_V1.intakeFormat,Accept:'application/json'}});
-    if(rsp.getResponseCode()!==200)throw Error('Tally API '+formId+' returned HTTP '+rsp.getResponseCode());
+    const rsp=soBBFetchTallyPageWithRetry_(url,key,formId,page);
     const body=JSON.parse(rsp.getContentText());
     if(!Array.isArray(body.submissions)||!Array.isArray(body.questions))throw Error('Unexpected Tally API response.');
     if(!questions.length)questions=body.questions;
