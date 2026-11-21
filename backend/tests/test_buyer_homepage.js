@@ -57,6 +57,9 @@ check('Blank restrictions request confirmation rather than claiming unrestricted
 check('Mobile nav includes all five destinations',html.includes('id="mainNav"')&&html.includes('aria-controls="mainNav"')&&html.includes('aria-expanded="false"'));
 check('Mobile menu responds to clicks',html.includes("function setMenuOpen(open)")&&html.includes("setMenuOpen(false)"));
 check('Empty catalog distinguishes feed outage',html.includes("catalogFeedUnavailable=true")&&html.includes("Catalog temporarily unavailable."));
+check('Contextual empty-state buttons honor hidden attribute',html.includes('.empty button[hidden]{display:none!important;}'));
+check('Clear filters only appears when there are unmatched active filters',html.includes("$('emptyReset').hidden=arr.length!==0 || !filtersActive || catalogFeedUnavailable;"));
+check('Retry only appears for actual catalog loading failure',html.includes("$('emptyRetry').hidden=arr.length!==0 || !catalogFeedUnavailable;"));
 check('Feed retry uses existing safe loader',html.includes("emptyRetry')")&&html.includes("addEventListener('click',loadApprovedCatalog)"));
 check('No matching song results are differentiated',html.includes("No songs match your search."));
 check('No unapproved sample playback fallback added',!html.includes("Golden Hour Drive")&&html.includes("}catch(e){ SONGS=[];"));
