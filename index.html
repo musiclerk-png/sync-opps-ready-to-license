@@ -224,15 +224,15 @@ function render(){
  if(activeId && arr.some(x=>x.id===activeId)){const song=arr.find(x=>x.id===activeId);insertPlayer(song);}else activeId=null;
 }
 function playerIframe(url,height,opts=''){const f=document.createElement('iframe');f.src=url;f.title='Music preview player';f.height=height;f.width='100%';f.loading='eager';f.referrerPolicy='strict-origin-when-cross-origin';f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;return f;}
-function insertPlayer(song){const area=$('playerMount');if(!area)return;area.replaceChildren();const p= song.player;if(p.type==='soundcloud'){const u=new URL('https://w.soundcloud.com/player/');u.searchParams.set('url',p.url);u.searchParams.set('color','#a83b06');u.searchParams.set('show_artwork','false');u.searchParams.set('hide_related','true');u.searchParams.set('show_comments','false');area.append(playerIframe(u.toString(),'112'));}
+function insertPlayer(song){const area=$('playerMount');if(!area)return;area.replaceChildren();const p= song.player;const status=document.createElement('div');status.className='sample-audio-note';status.setAttribute('role','status');status.textContent='Provider playback features and full-track access may vary.';if(p.type==='soundcloud'){const u=new URL('https://w.soundcloud.com/player/');u.searchParams.set('url',p.url);u.searchParams.set('color','#a83b06');u.searchParams.set('show_artwork','false');u.searchParams.set('hide_related','true');u.searchParams.set('show_comments','false');area.append(playerIframe(u.toString(),'112'));}
 else if(p.type==='spotify'){area.append(playerIframe(p.url,'152'));}
 else if(p.type==='youtube'){area.append(playerIframe(p.url,'200'));}
 else if(p.type==='bandcamp'){area.append(playerIframe(p.url,'140'));}
 else if(p.type==='apple'){area.append(playerIframe(p.url,'180'));}
 else if(p.type==='disco'){area.append(playerIframe(p.url,'285'));}
-else if(p.type==='mp3'){const a=document.createElement('audio');a.controls=true;a.preload='none';a.src=p.url;area.append(a);}
+else if(p.type==='mp3'){const a=document.createElement('audio');a.controls=true;a.preload='none';a.addEventListener('playing',()=>{status.textContent='Preview is playing.';});a.addEventListener('waiting',()=>{status.textContent='Preview is buffering. Please give it a moment.';});a.addEventListener('error',()=>{status.textContent='This preview cannot be played right now. Please try again later.';});a.src=p.url;area.append(a);}
 else{const div=document.createElement('div');div.style.cssText='padding:14px;background:#fff6ef;color:#6e4d3b;font-size:12px;line-height:1.6;border-radius:7px';div.textContent='DISCO accepts owner-generated official embed codes. A real member link is required to test this provider.';area.append(div);}
-const n=document.createElement('div');n.className='sample-audio-note';n.textContent='Provider playback features and full-track access may vary.';area.append(n);
+area.append(status);
 }
 function reset(){for(const id of ['searchInput','genreInput','moodInput','useInput'])$(id).value='';activeId=null;render();}
 function pair(a,b){return `<div class="pair"><span>${escapeHtml(a)}</span><strong>${escapeHtml(b)}</strong></div>`;}
