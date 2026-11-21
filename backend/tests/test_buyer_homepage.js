@@ -37,6 +37,21 @@ const card=cardHtml(good);
 check('Contact Artist opens approved Tally inquiry directly',card.includes('href="'+good.buyerInquiryUrl+'"')&&card.includes('target="_blank"'));
 check('Licensing details and audio controls present',card.includes('data-info="'+sid+'"')&&card.includes('data-play="'+sid+'"'));
 check('Internal song ID not printed as a card badge',!card.includes('<span class="provider-note">'+sid+'</span>'));
+
+const pairHelpers=match[1].slice(match[1].indexOf('function pair(a,b)'),match[1].indexOf('function openModal('));
+const licensingSource=match[1].slice(match[1].indexOf('function info(s)'),match[1].indexOf('function inquiryText(s)'));
+let licensingDialog;
+const showLicensingInfo=new Function('escapeHtml','openModal',pairHelpers+licensingSource+';return info;')(
+ escapeHtml,(...args)=>{licensingDialog=args;}
+);
+showLicensingInfo({...good,notes:'No political use <additional approval> & written consent',owners:{...good.owners,clearance:'Publisher approval required'}});
+const licensingHtml=licensingDialog[2];
+check('Licensing Info displays song-specific restrictions',licensingHtml.includes('Licensing Restrictions')&&licensingHtml.includes('No political use'));
+check('Restriction text is escaped before displaying to buyers',licensingHtml.includes('&lt;additional approval&gt;')&&licensingHtml.includes('&amp; written consent')&&!licensingHtml.includes('<additional approval>'));
+check('All three ownership groups and approval notes remain visible',licensingHtml.includes('Songwriting / Composition Shares')&&licensingHtml.includes('Publishers / Publishing Shares')&&licensingHtml.includes('Master Recording Owners')&&licensingHtml.includes('Publisher approval required'));
+showLicensingInfo({...good,notes:''});
+check('Blank restrictions request confirmation rather than claiming unrestricted rights',licensingDialog[2].includes('Confirm any restrictions with the rights holders.'));
+
 check('Mobile nav includes all five destinations',html.includes('id="mainNav"')&&html.includes('aria-controls="mainNav"')&&html.includes('aria-expanded="false"'));
 check('Mobile menu responds to clicks',html.includes("function setMenuOpen(open)")&&html.includes("setMenuOpen(false)"));
 check('Empty catalog distinguishes feed outage',html.includes("catalogFeedUnavailable=true")&&html.includes("Catalog temporarily unavailable."));
