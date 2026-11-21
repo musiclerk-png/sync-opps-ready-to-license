@@ -59,6 +59,13 @@ check('Feed retry uses existing safe loader',html.includes("emptyRetry')")&&html
 check('No matching song results are differentiated',html.includes("No songs match your search."));
 check('No unapproved sample playback fallback added',!html.includes("Golden Hour Drive")&&html.includes("}catch(e){ SONGS=[];"));
 
+const mediaFunctionSource=match[1].slice(match[1].indexOf('function insertPlayer('),match[1].indexOf('function reset()'));
+check('Native managed MP3 player retains browser controls',mediaFunctionSource.includes("a.controls=true")&&mediaFunctionSource.includes("a.preload='none'"));
+check('Managed preview reports playing event',mediaFunctionSource.includes("a.addEventListener('playing'")&&mediaFunctionSource.includes('Preview is playing.'));
+check('Managed preview reports buffering event',mediaFunctionSource.includes("a.addEventListener('waiting'")&&mediaFunctionSource.includes('Preview is buffering.'));
+check('Managed preview reports playback error',mediaFunctionSource.includes("a.addEventListener('error'")&&mediaFunctionSource.includes('cannot be played right now'));
+check('Preview feedback is accessible to assistive tech',mediaFunctionSource.includes("status.setAttribute('role','status')"));
+check('Native MP3 event feedback does not disable other provider embeds',mediaFunctionSource.includes("p.type==='spotify'")&&mediaFunctionSource.includes("p.type==='youtube'")&&mediaFunctionSource.includes("p.type==='bandcamp'"));
 // Exercise the actual homepage refresh routine with isolated, synthetic feed data.
 // These modeled media-state checks are not live browser playback or public approvals.
 (async()=>{
