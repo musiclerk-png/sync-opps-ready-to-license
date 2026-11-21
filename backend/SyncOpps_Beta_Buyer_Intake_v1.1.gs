@@ -48,9 +48,21 @@ function syncOppsBetaBuyerDryRun(){
 function syncOppsProcessBetaBuyer(e){
   // A random user cannot cause the processor to send emails by running it manually.
   if(!e||!e.triggerUid)throw Error('Trigger-only processor. Use syncOppsBetaBuyerDryRun() for manual testing.');
+  // Read the complete Tally response BEFORE taking the exclusive write lock.
+  // A slow external API cannot block a second scheduled run from safely
+  // reading its own data, and no Sheets or emails are touched on fetch failure.
+  console.log(JSON.stringify({mode:'LIVE TRIGGER',phase:'TALLY_READ_START'}));
+  const forms=soBBForms_();
+  console.log(JSON.stringify({mode:'LIVE TRIGGER',phase:'TALLY_READ_COMPLETE'}));
   const lock=LockService.getScriptLock();
-  if(!lock.tryLock(25000))throw Error('Another intake run holds the lock.');
+  if(!lock.tryLock(5000)){
+    // Another execution is processing a snapshot. Do not collide or emit a
+    // false failure email: the next scheduled trigger rechecks all submissions.
+    console.warn('Sync Opps Beta + Buyer Intake: SKIPPED_BUSY; active intake holds write lock. Next scheduled run will retry.');
+    return {mode:'LIVE TRIGGER',status:'SKIPPED_BUSY',writes:0,emails:0};
+  }
   try {
+    console.log(JSON.stringify({mode:'LIVE TRIGGER',phase:'WRITE_LOCK_ACQUIRED'}));
     const book=soBBBook_();
     const members=soBBTable_(book,SO_BB_V1.membersTab);
     const songs=soBBTable_(book,SO_BB_V1.songsTab);
@@ -61,7 +73,7 @@ function syncOppsProcessBetaBuyer(e){
     const writers=soBBTable_(book,SO_BB_V1.writerTab);
     const publishing=soBBTable_(book,SO_BB_V1.publishingTab);
     const masters=soBBTable_(book,SO_BB_V1.masterTab);
-    const forms=soBBForms_(); // fail before writes on API errors or partial pagination
+    // Complete Tally pagination was validated before acquiring this lock.
     const counters={newBeta:0,duplicateApplicants:0,pendingEligibility:0,
       acceptedBeta:0,waitlisted:0,newBuyer:0,buyerSent:0,buyerBlocked:0,emails:0};
     const emailIndex=soBBMemberEmailIndex_(members);
