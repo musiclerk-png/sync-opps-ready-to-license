@@ -21,6 +21,7 @@ main{background:linear-gradient(180deg,#fff9f4,#fffefd 350px);} .catalog{padding
 footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;font-size:12px;} .footerline strong{color:white;font-size:19px;} .footerline a{color:#ffc09b;font-weight:700;} .footer-note{font-size:11px;color:#b9a195;padding-top:11px;}
 .modal-backdrop{position:fixed;inset:0;background:rgba(32,18,11,.67);z-index:80;display:grid;place-items:center;padding:18px;} .modal-backdrop[hidden]{display:none;} .modal{width:min(640px,100%);max-height:min(90vh,840px);overflow-y:auto;background:#fffefa;border-radius:20px;box-shadow:0 32px 80px #170b0490;border:1px solid #eed5c6;} .modal-top{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:22px 24px;border-bottom:1px solid #efdfd4;background:#fff7ef;} .modal-top h2{font-size:24px;margin:0 0 4px;} .modal-top p{margin:0;color:#7b6354;font-size:12px;} .x{width:36px;height:36px;border:1px solid #e2cbbd;background:white;border-radius:50%;font-size:23px;line-height:1;color:#75482f;} .modal-main{padding:22px 24px 26px;} .modal-main h4{margin:21px 0 10px;font-size:13px;text-transform:uppercase;color:#9b451d;letter-spacing:.055em;} .modal-main h4:first-child{margin-top:0;} .pair{display:flex;align-items:start;gap:20px;justify-content:space-between;border-bottom:1px solid #f1e4da;padding:9px 0;font-size:13px;} .pair span:first-child{color:#725e53;} .pair strong{text-align:right;max-width:66%;font-weight:740;} .disclaimer{background:#fff1e5;padding:12px;border-radius:10px;border-left:3px solid #bd5e24;font-size:12px;color:#714a31;line-height:1.5;margin:17px 0;} .modal-main p{font-size:14px;line-height:1.62;color:#61514a;} .inquiry{background:#f9f0e8;border-radius:12px;padding:16px;white-space:pre-wrap;font:12px/1.6 system-ui,Arial,sans-serif;color:#524137;border:1px solid #efdfd0;} .modal-cta{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px;} .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:120;background:#2d1b12;color:white;padding:12px 20px;border-radius:99px;box-shadow:0 12px 30px #0004;font-size:13px;max-width:90vw;text-align:center;} .toast[hidden]{display:none;}
 @media(max-width:1100px){.toolrow{grid-template-columns:1.5fr repeat(2,1fr);} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tagline{display:none;} nav{gap:13px;}} @media(max-width:750px){.wrap{width:min(100% - 30px,600px)}.nav{min-height:68px;gap:14px;}.brandname{font-size:21px;} .logo{height:43px;width:43px;font-size:28px;}nav{display:none;} .menu-button{display:inline-block;} .nav>.btn{font-size:11px;min-height:38px;padding:8px 11px;}.hero-inner{grid-template-columns:1fr;gap:18px;text-align:left;padding:33px 0 43px;}.hero-mark{height:100px;width:100px;font-size:71px;border-width:5px;} .hero p{font-size:14px}.hero-actions .btn{flex:1;padding:10px 13px;font-size:12px;}.launch-inner{justify-content:start;gap:7px;padding:12px 0;font-size:12px;flex-direction:column;}.sep{display:none;}.catalog{padding:34px 0 50px}.sectionhead{align-items:start;flex-direction:column;gap:11px}.toolrow{grid-template-columns:1fr 1fr;}.field:first-child{grid-column:1/-1}.grid{grid-template-columns:1fr;}.tags{min-height:0}.steps{grid-template-columns:1fr;gap:20px;}.artist-panel{grid-template-columns:1fr;padding:25px;gap:19px;}.footerline{align-items:start;flex-direction:column;}.modal-top,.modal-main{padding:19px;}} @media(max-width:420px){.nav>.btn{display:none}.toolrow{grid-template-columns:1fr}.field:first-child{grid-column:auto}}
+@media(max-width:750px){#mainNav.is-open{display:flex;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fffdfa;border-bottom:1px solid var(--line);box-shadow:0 14px 24px rgba(87,44,19,.13);padding:7px 20px 15px;}#mainNav.is-open a{padding:13px 5px;border-bottom:1px solid #f1e5da;}}
 </style>
 </head>
 <body>
@@ -28,9 +29,9 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
 <header>
   <div class="wrap nav">
     <a class="brand" href="#home" aria-label="Sync Opps. home"><span class="logo" aria-hidden="true">S</span><span class="brandname">Sync Opps.</span><span class="tagline">Ready to License.</span></a>
-    <nav aria-label="Main navigation"><a href="#home">Home</a><a href="#catalog">Browse Music</a><a href="#about">How It Works</a><a href="#for-buyers">For Buyers</a><a href="beta/">For Artists</a></nav>
+    <nav id="mainNav" aria-label="Main navigation"><a href="#home">Home</a><a href="#catalog">Browse Music</a><a href="#about">How It Works</a><a href="#for-buyers">For Buyers</a><a href="beta/">For Artists</a></nav>
     <a class="btn btn-primary" href="#catalog">Explore Tracks →</a>
-    <button class="menu-button" id="mobileCatalog" aria-label="Browse the catalog">Catalog ↓</button>
+    <button class="menu-button" id="mobileCatalog" aria-controls="mainNav" aria-expanded="false" aria-label="Open navigation menu">Menu</button>
   </div>
 </header>
 <section class="hero" id="home">
@@ -54,7 +55,7 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
     <div class="filterbottom"><span class="micro">Preview playback and licensing details may vary by track.</span><button class="clear" id="resetFilters">Clear all filters</button></div>
   </div>
   <div class="grid" id="songGrid" aria-live="polite"></div>
-  <div class="empty" id="emptyState" hidden><strong>New music is on its way.</strong><span id="emptyDescription">The first catalog selections will appear here when available.</span><br><button class="btn btn-outline" style="margin-top:18px" id="emptyReset">Clear search filters</button></div>
+  <div class="empty" id="emptyState" role="status" aria-live="polite" hidden><strong id="emptyTitle">New music is on its way.</strong><span id="emptyDescription">The first catalog selections will appear here when available.</span><div><button class="btn btn-outline" style="margin-top:18px" id="emptyReset" hidden>Clear search filters</button><button class="btn btn-outline" style="margin-top:18px" id="emptyRetry" hidden>Try loading again</button></div></div>
 </section>
 <section class="how" id="about"><div class="wrap"><h2>How Music Licensing Works</h2><div class="steps"><div class="step"><div class="roundicon" aria-hidden="true">1</div><div><strong>Discover music</strong><p>Find songs that fit your story and listen directly on the catalog page.</p></div></div><div class="step"><div class="roundicon" aria-hidden="true">2</div><div><strong>Review licensing details</strong><p>See song-specific composition, publishing and master recording ownership information.</p></div></div><div class="step"><div class="roundicon" aria-hidden="true">3</div><div><strong>Contact the rights holders</strong><p>Send an inquiry about your project and arrange licensing directly. Sync Opps. takes no commission.</p></div></div></div></div></section>
 <section class="artists-section" id="for-buyers"><div class="wrap"><div class="artist-panel"><div><div class="eyebrow">For film, television, brands and creators</div><h2>Hear something that fits?</h2><p>Open a song’s <strong>Licensing Info</strong> to review its details, then use <strong>Contact Artist</strong> to describe your project. The authorized licensing representative can confirm availability, approvals and fees.</p><p>Licensing is negotiated directly with the rights holders. Sync Opps. does not collect a commission on licensing fees.</p><a class="btn btn-primary" href="#catalog">Explore the Catalog →</a></div><div class="mini-facts"><div class="fact"><strong>100%</strong><span>Licensing fees retained by artists</span></div><div class="fact"><strong>0%</strong><span>Sync Opps. licensing commission</span></div><a href="beta/" style="display:inline-block;margin-top:13px;font-size:12px;color:#a03c10;text-decoration:underline;">Are you an artist? Learn about participating.</a></div></div></div></section>
@@ -144,6 +145,7 @@ async function readLiveFeed(endpoint){
 }
 let lastCatalogRefreshAt=0;
 let catalogRefreshInFlight=false;
+let catalogFeedUnavailable=false;
 async function loadApprovedCatalog(){
   if(catalogRefreshInFlight)return;
   catalogRefreshInFlight=true;
@@ -163,7 +165,8 @@ async function loadApprovedCatalog(){
       obj=await rsp.json();
     }else throw Error('Invalid feed mode');
     SONGS=(Array.isArray(obj?.songs)?obj.songs:[]).map(normalizeSong).filter(Boolean);
-  }catch(e){ SONGS=[]; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
+    catalogFeedUnavailable=false;
+  }catch(e){ SONGS=[]; catalogFeedUnavailable=true; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
   finally { catalogRefreshInFlight=false; }
   populateFilters(); render();
 }
@@ -185,7 +188,26 @@ function populateFilters(){
 }
 function currentMatches(){const q=$('searchInput').value.toLowerCase().trim(),g=$('genreInput').value,m=$('moodInput').value,u=$('useInput').value;return SONGS.filter(x=>(!g||x.genre===g)&&(!m||x.moods.includes(m))&&(!u||x.uses.includes(u))&&(!q||[x.title,x.artist,x.genre,x.source,x.notes,...x.moods,...x.uses].join(' ').toLowerCase().includes(q)));}
 function cardHtml(s){return `<article class="song-card" aria-label="${escapeHtml(s.title)} by ${escapeHtml(s.artist)}"><div class="card-head"><div class="art ${escapeHtml(s.art)}"><span class="art-symbol" aria-hidden="true">♫</span></div><div class="trackmeta"><h3 title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3><p class="artist">by ${escapeHtml(s.artist)}</p><p class="genre">${escapeHtml(s.genre)} · ${escapeHtml(s.duration)}</p></div></div><div class="provider"><span class="source-pill">◉ ${escapeHtml(s.source)}</span><span class="provider-note">Original music</span></div><div class="listen-area"><div class="listen-row"><button class="play-btn" data-play="${escapeHtml(s.id)}" aria-label="${activeId===s.id?'Close':'Open'} ${escapeHtml(s.source)} player for ${escapeHtml(s.title)}" aria-expanded="${activeId===s.id}">${activeId===s.id?'×':'▶'}</button><div class="wave" aria-hidden="true"></div><span class="listen-label">${activeId===s.id?'Close player':'Listen here'}</span></div>${activeId===s.id?`<div class="embed-holder" id="playerMount"></div>`:''}</div><div class="tags"><div class="tagline-row"><span class="tag-title">Mood:</span>${s.moods.map(tag).join('')}</div><div class="tagline-row"><span class="tag-title">Great For:</span>${s.uses.map(tag).join('')}</div></div><div class="actions"><button class="btn btn-primary" data-info="${escapeHtml(s.id)}">Licensing Info</button><a class="btn btn-outline" href="${escapeHtml(s.buyerInquiryUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Contact the licensing representative for ${escapeHtml(s.title)}">Contact Artist</a></div><div class="card-foot">Rights details are member supplied; confirm all permissions with the relevant rights holders.</div></article>`;}
-function render(){const arr=currentMatches();$('songGrid').innerHTML=arr.map(cardHtml).join('');$('resultCount').textContent=`${arr.length} of ${SONGS.length} songs`;$('emptyState').hidden=arr.length!==0;const em=$('emptyDescription');if(em)em.textContent=SONGS.length?'Try a different filter or search term.':'Catalog selections will appear here when available.';if(activeId && arr.some(x=>x.id===activeId)){const song=arr.find(x=>x.id===activeId);insertPlayer(song);}else activeId=null;}
+function render(){
+ const arr=currentMatches();
+ $('songGrid').innerHTML=arr.map(cardHtml).join('');
+ $('resultCount').textContent=`${arr.length} of ${SONGS.length} songs`;
+ $('emptyState').hidden=arr.length!==0;
+ const filtersActive=['searchInput','genreInput','moodInput','useInput'].some(id=>Boolean($(id).value));
+ if(catalogFeedUnavailable){
+   $('emptyTitle').textContent='Catalog temporarily unavailable.';
+   $('emptyDescription').textContent='We could not load the music catalog right now. Please try again.';
+ }else if(SONGS.length===0){
+   $('emptyTitle').textContent='New music is on its way.';
+   $('emptyDescription').textContent='Catalog selections will appear here when available.';
+ }else{
+   $('emptyTitle').textContent='No songs match your search.';
+   $('emptyDescription').textContent='Try a different filter or search term.';
+ }
+ $('emptyReset').hidden=arr.length!==0 || !filtersActive || catalogFeedUnavailable;
+ $('emptyRetry').hidden=arr.length!==0 || !catalogFeedUnavailable;
+ if(activeId && arr.some(x=>x.id===activeId)){const song=arr.find(x=>x.id===activeId);insertPlayer(song);}else activeId=null;
+}
 function playerIframe(url,height,opts=''){const f=document.createElement('iframe');f.src=url;f.title='Music preview player';f.height=height;f.width='100%';f.loading='eager';f.referrerPolicy='strict-origin-when-cross-origin';f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;return f;}
 function insertPlayer(song){const area=$('playerMount');if(!area)return;area.replaceChildren();const p= song.player;if(p.type==='soundcloud'){const u=new URL('https://w.soundcloud.com/player/');u.searchParams.set('url',p.url);u.searchParams.set('color','#a83b06');u.searchParams.set('show_artwork','false');u.searchParams.set('hide_related','true');u.searchParams.set('show_comments','false');area.append(playerIframe(u.toString(),'112'));}
 else if(p.type==='spotify'){area.append(playerIframe(p.url,'152'));}
@@ -214,7 +236,11 @@ function toast(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTime
 $('songGrid').addEventListener('click',e=>{let t=e.target.closest('[data-play],[data-info],[data-contact]');if(!t)return;const s=SONGS.find(x=>x.id===(t.dataset.play||t.dataset.info||t.dataset.contact));if(!s)return;if(t.hasAttribute('data-play')){activeId=activeId===s.id?null:s.id;render();}else if(t.hasAttribute('data-info'))info(s);else contact(s);});
 $('modalContent').addEventListener('click',async e=>{const c=e.target.closest('[data-copy]'),t=e.target.closest('[data-modal-contact]');if(t){const s=SONGS.find(x=>x.id===t.dataset.modalContact);if(s)contact(s);}else if(c){const s=SONGS.find(x=>x.id===c.dataset.copy);if(s){try{await navigator.clipboard.writeText(inquiryText(s));toast('Inquiry template copied.');}catch{toast('Copy unavailable in this browser. Select the template text manually.');}}}else if(e.target.id==='modalDone')closeModal();});
 $('modalClose').addEventListener('click',closeModal);$('modalLayer').addEventListener('click',e=>{if(e.target.id==='modalLayer')closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modalLayer').hidden)closeModal();});
-for(const id of ['searchInput','genreInput','moodInput','useInput'])$(id).addEventListener(id==='searchInput'?'input':'change',()=>{activeId=null;render();});$('resetFilters').addEventListener('click',reset);$('emptyReset').addEventListener('click',reset);$('mobileCatalog').addEventListener('click',()=>location.hash='#catalog');
+for(const id of ['searchInput','genreInput','moodInput','useInput'])$(id).addEventListener(id==='searchInput'?'input':'change',()=>{activeId=null;render();});$('resetFilters').addEventListener('click',reset);$('emptyReset').addEventListener('click',reset);$('emptyRetry').addEventListener('click',loadApprovedCatalog);
+function setMenuOpen(open){const nav=$('mainNav'),btn=$('mobileCatalog');nav.classList.toggle('is-open',open);btn.setAttribute('aria-expanded',String(open));btn.setAttribute('aria-label',open?'Close navigation menu':'Open navigation menu');}
+$('mobileCatalog').addEventListener('click',()=>setMenuOpen($('mobileCatalog').getAttribute('aria-expanded')!=='true'));
+$('mainNav').addEventListener('click',e=>{if(e.target.closest('a'))setMenuOpen(false);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('mobileCatalog').getAttribute('aria-expanded')==='true'){setMenuOpen(false);$('mobileCatalog').focus();}});
 // A Paused or Withdrawn song must not remain playable indefinitely in a
 // visitor's already-open tab. The private server still independently blocks
 // inquiries, and the live feed remains the sole source of published songs.
