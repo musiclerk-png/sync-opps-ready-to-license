@@ -43,4 +43,52 @@ check('Empty catalog distinguishes feed outage',html.includes("catalogFeedUnavai
 check('Feed retry uses existing safe loader',html.includes("emptyRetry')")&&html.includes("addEventListener('click',loadApprovedCatalog)"));
 check('No matching song results are differentiated',html.includes("No songs match your search."));
 check('No unapproved sample playback fallback added',!html.includes("Golden Hour Drive")&&html.includes("}catch(e){ SONGS=[];"));
-console.log('TOTAL '+checks.length+' buyer homepage tests PASS');
+
+// Exercise the actual homepage refresh routine with isolated, synthetic feed data.
+// These modeled media-state checks are not live browser playback or public approvals.
+(async()=>{
+ const script=match[1];
+ const start=script.indexOf('let lastCatalogRefreshAt=0;');
+ const end=script.indexOf('let activeId = null;');
+ assert.ok(start>=0 && end>start,'Cannot locate production catalog refresh function');
+ const runtime=script.slice(start,end);
+ const factory=new Function('fetch','readLiveFeed','normalizeSong','populateFilters','render','closeModal','$','console',
+   'let SONGS=[];\n'+runtime+'\nreturn {loadApprovedCatalog,state:()=>({songs:SONGS,unavailable:catalogFeedUnavailable})};');
+ const queue=[
+  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
+  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
+  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-2'}]},
+  {songs:[]},
+  new Error('synthetic feed timeout'),
+  {songs:[]}
+ ];
+ let renders=0,playersStopped=0,playing=false,dialogsClosed=0,filtersPopulated=0;
+ const modal={hidden:true};
+ const app=factory(
+  async()=>({ok:true,json:async()=>({mode:'live',endpoint:'https://script.google.com/macros/s/SYNTHETIC/exec'})}),
+  async()=>{const next=queue.shift();if(next instanceof Error)throw next;return next;},
+  x=>x,
+  ()=>{filtersPopulated++;},
+  ()=>{renders++;if(playing){playing=false;playersStopped++;}},
+  ()=>{modal.hidden=true;dialogsClosed++;},
+  id=>{assert.equal(id,'modalLayer');return modal;},
+  {warn:()=>{}}
+ );
+ await app.loadApprovedCatalog();
+ check('First successful catalog read creates buyer cards',renders===1 && app.state().songs.length===1);
+ playing=true;modal.hidden=false;
+ await app.loadApprovedCatalog();
+ check('Identical feed polling does not destroy ongoing playback',renders===1 && playing);
+ check('Identical feed polling retains open licensing dialog',dialogsClosed===0 && !modal.hidden);
+ await app.loadApprovedCatalog();
+ check('Modified rights refreshes buyer cards',renders===2 && !playing && playersStopped===1);
+ check('Modified rights closes a stale licensing dialog',dialogsClosed===1 && modal.hidden);
+ playing=true;
+ await app.loadApprovedCatalog();
+ check('Withdrawn track is removed and its player stopped',renders===3 && !playing && playersStopped===2 && app.state().songs.length===0);
+ await app.loadApprovedCatalog();
+ check('Feed failure fails closed and marks catalog unavailable',renders===4 && app.state().unavailable && app.state().songs.length===0);
+ await app.loadApprovedCatalog();
+ check('Feed recovery re-renders the honest empty state',renders===5 && !app.state().unavailable && filtersPopulated===5);
+ console.log('TOTAL '+checks.length+' buyer homepage tests PASS');
+})().catch(err=>{console.error(err);process.exitCode=1;});
