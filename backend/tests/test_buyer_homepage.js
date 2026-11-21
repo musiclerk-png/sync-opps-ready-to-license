@@ -93,7 +93,7 @@ check('Native MP3 event feedback does not disable other provider embeds',mediaFu
  let renders=0,playersStopped=0,playing=false,dialogsClosed=0,filtersPopulated=0;
  const modal={hidden:true};
  const app=factory(
-  async()=>({ok:true,json:async()=>({mode:'live',endpoint:'https://script.google.com/macros/s/SYNTHETIC/exec'})}),
+  async()=>({ok:true,json:async()=>({schemaVersion:1,mode:'live',endpoint:'https://script.google.com/macros/s/SYNTHETIC/exec'})}),
   async()=>{const next=queue.shift();if(next instanceof Error)throw next;return next;},
   x=>x,
   ()=>{filtersPopulated++;},
