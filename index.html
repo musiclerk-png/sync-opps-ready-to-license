@@ -146,10 +146,15 @@ async function readLiveFeed(endpoint){
 let lastCatalogRefreshAt=0;
 let catalogRefreshInFlight=false;
 let catalogFeedUnavailable=false;
+let catalogViewInitialized=false;
 async function loadApprovedCatalog(){
   if(catalogRefreshInFlight)return;
   catalogRefreshInFlight=true;
   lastCatalogRefreshAt=Date.now();
+  // Preserve an open preview when the approved public feed has not changed.
+  // A changed or failed feed must still remove withdrawn audio immediately.
+  const previousApprovedSongs=JSON.stringify(SONGS);
+  const previousFeedUnavailable=catalogFeedUnavailable;
   try{
     const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
     if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
@@ -168,7 +173,17 @@ async function loadApprovedCatalog(){
     catalogFeedUnavailable=false;
   }catch(e){ SONGS=[]; catalogFeedUnavailable=true; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
   finally { catalogRefreshInFlight=false; }
-  populateFilters(); render();
+  const mustUpdateView=!catalogViewInitialized ||
+    catalogFeedUnavailable!==previousFeedUnavailable ||
+    JSON.stringify(SONGS)!==previousApprovedSongs;
+  if(mustUpdateView){
+    // Never leave a licensing dialog showing stale rights or a stale inquiry
+    // link after publication changes or a failed feed read.
+    if(catalogViewInitialized && !$('modalLayer').hidden)closeModal();
+    catalogViewInitialized=true;
+    populateFilters();
+    render();
+  }
 }
 
 let activeId = null;
