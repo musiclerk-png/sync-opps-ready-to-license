@@ -13,6 +13,8 @@ check('Clear licensing steps',html.includes('How Music Licensing Works'));
 check('Four buyer search inputs', ['searchInput','genreInput','moodInput','useInput'].every(x=>html.includes('id="'+x+'"'))&&!html.includes('sourceInput'));
 check('No sample catalog records',!html.includes('Golden Hour Drive')&&!html.includes('const tracks='));
 check('Approved feed still used',html.includes("await readLiveFeed(cfg.endpoint||'')"));
+check('No static catalog fallback remains',!html.includes("cfg.mode==='static'")&&!html.includes("fetch('./catalog.json'"));
+check('Only schema-v1 live config and feed payloads are accepted',html.includes("cfg?.schemaVersion!==1 || cfg.mode!=='live'")&&html.includes("obj.schemaVersion!==1 || !Array.isArray(obj.songs)"));
 check('Feed failures hide catalog',html.includes("}catch(e){ SONGS=[];"));
 check('Periodic withdrawal suppression retained',html.includes('window.setInterval(refreshCatalogOnReturn,30000)'));
 const trusted=match[1].slice(match[1].indexOf('const TRUSTED_IFRAMES'),match[1].indexOf('function safeUrl('));
@@ -77,12 +79,16 @@ check('Native MP3 event feedback does not disable other provider embeds',mediaFu
  const factory=new Function('fetch','readLiveFeed','normalizeSong','populateFilters','render','closeModal','$','console',
    'let SONGS=[];\n'+runtime+'\nreturn {loadApprovedCatalog,state:()=>({songs:SONGS,unavailable:catalogFeedUnavailable})};');
  const queue=[
-  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
-  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
-  {songs:[{id:'SYNTHETIC-TRACK',rights:'version-2'}]},
-  {songs:[]},
+  {schemaVersion:1,songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
+  {schemaVersion:1,songs:[{id:'SYNTHETIC-TRACK',rights:'version-1'}]},
+  {schemaVersion:1,songs:[{id:'SYNTHETIC-TRACK',rights:'version-2'}]},
+  {schemaVersion:1,songs:[]},
   new Error('synthetic feed timeout'),
-  {songs:[]}
+  {schemaVersion:1,songs:[]},
+  {songs:[{id:'SYNTHETIC-TRACK'}]},
+  {schemaVersion:2,songs:[{id:'SYNTHETIC-TRACK'}]},
+  {schemaVersion:1,songs:'not an array'},
+  {schemaVersion:1,songs:[]}
  ];
  let renders=0,playersStopped=0,playing=false,dialogsClosed=0,filtersPopulated=0;
  const modal={hidden:true};
@@ -112,5 +118,21 @@ check('Native MP3 event feedback does not disable other provider embeds',mediaFu
  check('Feed failure fails closed and marks catalog unavailable',renders===4 && app.state().unavailable && app.state().songs.length===0);
  await app.loadApprovedCatalog();
  check('Feed recovery re-renders the honest empty state',renders===5 && !app.state().unavailable && filtersPopulated===5);
+ await app.loadApprovedCatalog();
+ check('Missing feed schema fails closed rather than looking like empty approvals',app.state().unavailable && renders===6 && app.state().songs.length===0);
+ await app.loadApprovedCatalog();
+ check('Unsupported feed schema remains unavailable',app.state().unavailable && renders===6);
+ await app.loadApprovedCatalog();
+ check('Non-array songs are rejected without a redraw',app.state().unavailable && renders===6);
+ await app.loadApprovedCatalog();
+ check('Valid live schema recovers without a fallback',!app.state().unavailable && renders===7);
+ let staticReads=0,liveReads=0;
+ const rejectStatic=factory(
+  async(url)=>{if(url!=='./feed-config.json')staticReads++;return {ok:true,json:async()=>({schemaVersion:1,mode:'static',endpoint:'https://invalid.example'})};},
+  async()=>{liveReads++;return {schemaVersion:1,songs:[{id:'SYNTHETIC-TRACK'}]};},
+  x=>x,()=>{},()=>{},()=>{},id=>{assert.equal(id,'modalLayer');return {hidden:true};},{warn:()=>{}}
+ );
+ await rejectStatic.loadApprovedCatalog();
+ check('Static mode is rejected without requesting catalog.json or stale media',rejectStatic.state().unavailable && rejectStatic.state().songs.length===0 && staticReads===0 && liveReads===0);
  console.log('TOTAL '+checks.length+' buyer homepage tests PASS');
 })().catch(err=>{console.error(err);process.exitCode=1;});
