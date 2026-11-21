@@ -35,3 +35,5 @@ jobs:
         run: node backend/tests/test_tally_fetch_retry.js
       - name: Test buyer-facing catalog design and secure inquiries
         run: node backend/tests/test_buyer_homepage.js
+      - name: Test scheduled intake lock contention and server failures
+        run: node backend/tests/test_intake_lock_overlap.js
