@@ -159,17 +159,15 @@ async function loadApprovedCatalog(){
     const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
     if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
     const cfg=await cfgResponse.json();
-    let obj;
-    if(cfg.mode==='live'){
-      // No fallback to cached/static songs on failure: this prevents withdrawn songs
-      // from reappearing when the live membership/rights feed is unavailable.
-      obj=await readLiveFeed(cfg.endpoint||'');
-    }else if(cfg.mode==='static'){
-      const rsp=await fetch('./catalog.json',{cache:'no-store'});
-      if(!rsp.ok)throw Error('Static catalog unavailable');
-      obj=await rsp.json();
-    }else throw Error('Invalid feed mode');
-    SONGS=(Array.isArray(obj?.songs)?obj.songs:[]).map(normalizeSong).filter(Boolean);
+    // A buyer must only see current server-approved records. Never use
+    // a static catalog, even if a remote config accidentally requests it.
+    if(cfg?.schemaVersion!==1 || cfg.mode!=='live')
+      throw Error('Invalid live feed configuration');
+    const obj=await readLiveFeed(cfg.endpoint||'');
+    // A malformed response is an outage, not evidence of an empty catalog.
+    if(!obj || obj.schemaVersion!==1 || !Array.isArray(obj.songs))
+      throw Error('Invalid approved catalog feed response');
+    SONGS=obj.songs.map(normalizeSong).filter(Boolean);
     catalogFeedUnavailable=false;
   }catch(e){ SONGS=[]; catalogFeedUnavailable=true; console.warn('Catalog feed unavailable; no songs shown:',e.message); }
   finally { catalogRefreshInFlight=false; }
