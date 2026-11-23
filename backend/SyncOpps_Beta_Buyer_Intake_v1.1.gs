@@ -572,13 +572,13 @@ function soBBAcceptanceEligible_(row,apps,emailIndex,members,betaSlots){
   return {email,memberId,slot,artist:displayName||'Artist'};
 }
 function soBBAcceptanceEmail_(member){
-  return 'Congratulations, '+member.artist+'!\\n\\n'+
-    'Your application for the Sync Opps. First 40 Ready to License Catalog Beta is approved.\\n'+
-    'Your beta position is '+member.slot+' of 40.\\n\\n'+
-    'Submit your music here: '+SO_BB_V1.memberSongFormUrl+'\\n\\n'+
-    'Use your verified Patreon membership email and submit an authorized music link or MP3 preview (up to 10 MB), along with accurate songwriter, publishing and master ownership details. Every song is reviewed separately before public playback.\\n\\n'+
-    'Approved previews can be played by anyone in our public catalog. We will share the catalog with our existing licensing partners and promote it through paid advertising targeting music buyers.\\n\\n'+
-    'You retain your rights and 100% of licensing fees. Acceptance does not guarantee publication, buyer inquiries or licensing placements.\\n\\n'+
+  return 'Congratulations, '+member.artist+'!\n\n'+
+    'Your application for the Sync Opps. First 40 Ready to License Catalog Beta is approved.\n'+
+    'Your beta position is '+member.slot+' of 40.\n\n'+
+    'Submit your music here: '+SO_BB_V1.memberSongFormUrl+'\n\n'+
+    'Use your verified Patreon membership email and submit an authorized music link or MP3 preview (up to 10 MB), along with accurate songwriter, publishing and master ownership details. Every song is reviewed separately before public playback.\n\n'+
+    'Approved previews can be played by anyone in our public catalog. We will share the catalog with our existing licensing partners and promote it through paid advertising targeting music buyers.\n\n'+
+    'You retain your rights and 100% of licensing fees. Acceptance does not guarantee publication, buyer inquiries or licensing placements.\n\n'+
     'Sync Opps.';
 }
 function soBBBuyerEmail_(r){
