@@ -37,7 +37,7 @@ const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const cardHtml=new Function('activeId','escapeHtml','tag',cardSource+';return cardHtml;')(null,escapeHtml,x=>'<span>'+escapeHtml(x)+'</span>');
 const card=cardHtml(good);
 check('Contact Artist opens approved Tally inquiry directly',card.includes('href="'+good.buyerInquiryUrl+'"')&&card.includes('target="_blank"'));
-check('Licensing details and audio controls present',card.includes('data-info="'+sid+'"')&&card.includes('data-play="'+sid+'"'));
+check('Licensing details and integrated MP3 play control present',card.includes('data-info="'+sid+'"')&&card.includes('data-mp3-play')&&!card.includes('id="playerMount"'));
 check('Internal song ID not printed as a card badge',!card.includes('<span class="provider-note">'+sid+'</span>'));
 
 const pairHelpers=match[1].slice(match[1].indexOf('function pair(a,b)'),match[1].indexOf('function openModal('));
@@ -65,15 +65,63 @@ check('No matching song results are differentiated',html.includes("No songs matc
 check('No unapproved sample playback fallback added',!html.includes("Golden Hour Drive")&&html.includes("}catch(e){ SONGS=[];"));
 
 const mediaFunctionSource=match[1].slice(match[1].indexOf('function insertPlayer('),match[1].indexOf('function reset()'));
-// Verify the MP3 branch hides the download option without removing playback controls.
-check('MP3 download UI suppression is limited to the browser-native player',mediaFunctionSource.includes("else if(p.type==='mp3'){const a=document.createElement('audio');a.controls=true;a.setAttribute('controlsList','nodownload');a.preload='none';"));
-check('MP3 download UI suppression does not remove pause or error feedback',mediaFunctionSource.includes("a.addEventListener('playing'")&&mediaFunctionSource.includes("a.addEventListener('error'")&&mediaFunctionSource.includes('a.src=p.url;area.append(a)'));
-check('Native managed MP3 player retains browser controls',mediaFunctionSource.includes("a.controls=true")&&mediaFunctionSource.includes("a.preload='none'"));
-check('Managed preview reports playing event',mediaFunctionSource.includes("a.addEventListener('playing'")&&mediaFunctionSource.includes('Preview is playing.'));
-check('Managed preview reports buffering event',mediaFunctionSource.includes("a.addEventListener('waiting'")&&mediaFunctionSource.includes('Preview is buffering.'));
-check('Managed preview reports playback error',mediaFunctionSource.includes("a.addEventListener('error'")&&mediaFunctionSource.includes('cannot be played right now'));
-check('Preview feedback is accessible to assistive tech',mediaFunctionSource.includes("status.setAttribute('role','status')"));
-check('Native MP3 event feedback does not disable other provider embeds',mediaFunctionSource.includes("p.type==='spotify'")&&mediaFunctionSource.includes("p.type==='youtube'")&&mediaFunctionSource.includes("p.type==='bandcamp'"));
+const initSource=match[1].slice(match[1].indexOf('function initManagedPlayers('),match[1].indexOf('function playerIframe('));
+check('Approved MP3 uses one compact always-present player',card.includes('data-managed-audio')&&card.includes('data-mp3-play')&&card.includes('data-mp3-seek')&&card.includes('data-mp3-mute'));
+check('Compact MP3 omits native controls and visible download action',card.includes('controlsList="nodownload"')&&!card.includes('<audio controls'));
+check('Play button is a real play/pause button, not a close control',card.includes('class="pause-icon"')&&!card.includes('Close player'));
+check('Progress and time are present before the first click',card.includes('data-elapsed')&&card.includes('data-duration')&&card.includes('class="managed-timeline"'));
+check('Great for categories collapse to three by default',card.includes('+')&&card.includes('data-more-uses')&&card.includes('data-extra-use hidden'));
+check('No raw URL from private form included in a managed MP3 player',!card.includes('tally.so/r/') || card.includes('https://tally.so/r/jeoYaE?'));
+check('Native iframe providers remain unchanged',mediaFunctionSource.includes("p.type==='soundcloud'")&&mediaFunctionSource.includes("p.type==='spotify'")&&mediaFunctionSource.includes("p.type==='youtube'")&&mediaFunctionSource.includes("p.type==='bandcamp'"));
+const soundcloud=normalizeSong({...seed,source:'SoundCloud',player:{type:'soundcloud',url:'https://soundcloud.com/example/test'}});
+const soundcloudCard=cardHtml(soundcloud);
+check('Third-party provider retains its embedded player opener',soundcloudCard.includes('data-play="'+sid+'"')&&!soundcloudCard.includes('data-managed-audio'));
+check('MP3 UI does not depend on expanding a second player',initSource.includes("document.querySelectorAll('.song-card')")&&!card.includes('class="embed-holder"'));
+check('Existing live-feed withdrawal code is still present',match[1].includes('window.setInterval(refreshCatalogOnReturn,30000)'));
+check('Custom player keeps play, pause, seek and mute event support',initSource.includes("play.addEventListener('click'")&&initSource.includes("audio.addEventListener('pause'")&&initSource.includes("timeline.addEventListener('change'")&&initSource.includes("mute.addEventListener('click'"));
+check('Custom player includes buffering and error feedback',initSource.includes("audio.addEventListener('waiting'")&&initSource.includes("audio.addEventListener('error'"));
+check('Preview blocks other MP3 tracks from playing simultaneously',initSource.includes("other!==audio&&!other.paused")&&initSource.includes('other.pause()'));
+check('Display names and titles still escape markup',!cardHtml({...good,title:'Bad<script>alert(1)</script>'}).includes('<script>'));
+function fakeControl(){
+ const handlers=Object.create(null);
+ return {
+  handlers,style:{setProperty(k,v){this[k]=v;}},classList:{values:new Set(),toggle(k,on){if(on)this.values.add(k);else this.values.delete(k);}},
+  attributes:{},currentTime:0,textContent:'',max:'62',value:'0',disabled:false,
+  addEventListener(k,fn){(handlers[k]||=[]).push(fn);},
+  setAttribute(k,v){this.attributes[k]=v;},
+  querySelector(){return null;},
+  emit(type){for(const f of handlers[type]||[])f();}
+ };
+}
+const preview=Object.create(fakeControl());
+const audio=Object.assign(fakeControl(),{
+ paused:true,ended:false,currentTime:0,duration:62,readyState:2,muted:false,
+ play(){this.paused=false;this.emit('play');return Promise.resolve();},
+ pause(){this.paused=true;this.emit('pause');}
+});
+const player=fakeControl(),play=fakeControl(),timeline=fakeControl(),
+ state=fakeControl(),elapsed=fakeControl(),duration=fakeControl(),mute=fakeControl();
+const title=fakeControl();title.textContent='Synthetic Track';
+preview.querySelector=sel=>({
+ 'audio[data-managed-audio]':audio,'[data-mp3-play]':play,'[data-mp3-seek]':timeline,
+ '.managed-state':state,'[data-elapsed]':elapsed,'[data-duration]':duration,
+ '[data-mp3-mute]':mute,'.managed-player':player,'.trackmeta h3':title
+})[sel]||null;
+const fakeDocument={activeElement:null,querySelectorAll:sel=>sel==='.song-card'?[preview]:sel==='audio[data-managed-audio]'?[audio]:[]};
+const initManagedPlayers=new Function('document',initSource+';return initManagedPlayers;')(fakeDocument);
+initManagedPlayers();
+check('Real custom controls begin in Ready to listen state',state.textContent==='Ready to listen'&&elapsed.textContent==='0:00');
+play.emit('click');
+check('Real play click calls HTMLAudioElement.play directly',audio.paused===false&&state.textContent==='Now playing'&&player.classList.values.has('is-playing'));
+check('Native pause changes active style back without expanding card',play.attributes['aria-label']==='Pause Synthetic Track'&&preview.handlers['click']===undefined);
+audio.currentTime=12.5;audio.emit('timeupdate');
+check('Playback updates elapsed seconds and progress slider',elapsed.textContent==='0:12'&&Number(timeline.value)===12.5);
+timeline.value='20';timeline.emit('change');
+check('Seeking repositions the one audio element',audio.currentTime===20);
+mute.emit('click');
+check('Mute button toggles audio.muted and announces state',audio.muted===true&&mute.attributes['aria-pressed']==='true');
+play.emit('click');
+check('Clicking during playback pauses rather than closing player',audio.paused===true&&state.textContent==='Paused'&&play.attributes['aria-label']==='Play Synthetic Track');
 // Exercise the actual homepage refresh routine with isolated, synthetic feed data.
 // These modeled media-state checks are not live browser playback or public approvals.
 (async()=>{
