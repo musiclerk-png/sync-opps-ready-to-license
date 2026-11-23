@@ -3,8 +3,11 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const URLImpl=require('node:url').URL;
 const html=fs.readFileSync('index.html','utf8');
-const match=html.match(/<script>([\s\S]*?)<\/script>/);
-assert.ok(match,'Site app script missing');
+const inlineScripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+assert.equal(inlineScripts.length,2,'Expected exactly an early live-feed starter and main app scripts');
+const earlyScript=inlineScripts[0][1];
+const match=inlineScripts[inlineScripts.length-1];
+new Function(earlyScript);
 new Function(match[1]);
 const checks=[];
 function check(name,value){assert.ok(value,name);checks.push(name);}
@@ -197,5 +200,49 @@ check('Clicking during playback pauses rather than closing player',audio.paused=
  );
  await rejectStatic.loadApprovedCatalog();
  check('Static mode is rejected without requesting catalog.json or stale media',rejectStatic.state().unavailable && rejectStatic.state().songs.length===0 && staticReads===0 && liveReads===0);
+ // Simulate an approved early JSONP callback and an invalid config using the real head script.
+ const fakeWindow={};
+ let configReads=0,feedScripts=0,removed=0;
+ const origin='https://script.google.com/macros/s/SYNTHETIC/exec';
+ const earlyStart=new Function('window','document','fetch','setTimeout','clearTimeout',earlyScript);
+ earlyStart(fakeWindow,{
+   createElement:()=>({remove:()=>{removed++;}}),
+   head:{append:script=>{
+     feedScripts++;
+     assert.ok(script.src.startsWith(origin+'?v='));
+     assert.equal(script.referrerPolicy,'no-referrer');
+     fakeWindow.syncOppsApprovedFeedV1({schemaVersion:1,songs:[{id:'SYNTHETIC-HEAD-SONG'}]});
+   }}
+ },async (url,options)=>{
+   configReads++;
+   assert.equal(url,'./feed-config.json');
+   assert.equal(options.cache,'no-store');
+   return {ok:true,json:async()=>({schemaVersion:1,mode:'live',endpoint:origin})};
+ },()=>1,()=>{});
+ const earlyData=await fakeWindow.__syncOppsInitialApprovedFeed;
+ check('Early head check requests a single current approved feed',configReads===1&&feedScripts===1&&removed===1&&earlyData.songs[0].id==='SYNTHETIC-HEAD-SONG');
+ check('Head callback cleaned after response',fakeWindow.syncOppsApprovedFeedV1===undefined);
+ const invalidWindow={};
+ let invalidFeedScripts=0;
+ earlyStart(invalidWindow,{createElement:()=>({remove:()=>{}}),head:{append:()=>{invalidFeedScripts++;}}},
+   async()=>({ok:true,json:async()=>({schemaVersion:1,mode:'static',endpoint:origin})}),()=>1,()=>{});
+ await assert.rejects(invalidWindow.__syncOppsInitialApprovedFeed,/Invalid live feed configuration/);
+ check('Early path rejects static feed mode without exposing songs',invalidFeedScripts===0);
+
+ // The main application consumes the early current response once and then
+ // refreshes from the live feed again to enforce withdrawals.
+ let firstFetches=0,firstReads=0,firstRenders=0;
+ const firstApp=factory(
+   async()=>{firstFetches++;return {ok:true,json:async()=>({schemaVersion:1,mode:'live',endpoint:origin})};},
+   async()=>{firstReads++;return {schemaVersion:1,songs:[]};},
+   x=>x,()=>{},()=>{firstRenders++;},()=>{},()=>({hidden:true}),{warn:()=>{}}
+ );
+ global.window={__syncOppsInitialApprovedFeed:Promise.resolve({schemaVersion:1,songs:[{id:'SYNTHETIC-APPROVED'}]})};
+ try{
+   await firstApp.loadApprovedCatalog();
+   check('First render consumes early approved response without duplicating network',firstFetches===0&&firstReads===0&&firstRenders===1&&firstApp.state().songs.length===1);
+   await firstApp.loadApprovedCatalog();
+   check('Second render rechecks live status and removes withdrawn tracks',firstFetches===1&&firstReads===1&&firstRenders===2&&firstApp.state().songs.length===0);
+ }finally{delete global.window;}
  console.log('TOTAL '+checks.length+' buyer homepage tests PASS');
 })().catch(err=>{console.error(err);process.exitCode=1;});
