@@ -328,6 +328,7 @@ function initManagedPlayers(){
   audio.addEventListener('durationchange',updateProgress);
   audio.addEventListener('timeupdate',updateProgress);
   audio.addEventListener('waiting',()=>{state.textContent='Buffering…';});
+  audio.addEventListener('playing',updateState);
   audio.addEventListener('error',()=>{updateState();state.textContent='Preview unavailable';});
   timeline.addEventListener('input',()=>{timeline.style.setProperty('--progress',Math.min(100,Number(timeline.value)/Number(timeline.max||fallback)*100)+'%');elapsed.textContent=fmt(Number(timeline.value));});
   timeline.addEventListener('change',()=>{if(audio.readyState>=1&&Number.isFinite(Number(timeline.value)))audio.currentTime=Number(timeline.value);});
