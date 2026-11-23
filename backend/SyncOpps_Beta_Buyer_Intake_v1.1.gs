@@ -212,6 +212,44 @@ function syncOppsProcessBetaBuyer(e){
         counters.acceptanceBlocked++;
       }
     }
+    // One-time owner-requested design review, not a member approval. The private
+    // ledger must explicitly contain the unique Test Pending command first.
+    // Never send from the wrong Google account or retry an attempted design test.
+    const designTestId='DESIGN-TEST-20261123-001';
+    const designTestTo='thesyncopps@gmail.com';
+    for(let i=0;i<acceptanceNotices.rows.length;i++){
+      const record=acceptanceNotices.rows[i];
+      if(soBBC_(record,acceptanceNotices,'Tally Submission ID')!==designTestId ||
+         soBBC_(record,acceptanceNotices,'Delivery Status')!=='Test Pending' ||
+         soBBEmail_(soBBC_(record,acceptanceNotices,'Patreon Email (PRIVATE)'))!==designTestTo)continue;
+      if(!senderAuthorized || counters.emails>=SO_BB_V1.maxEmailPerRun ||
+         MailApp.getRemainingDailyQuota()<1){
+        console.warn('DESIGN_TEST_BLOCKED: approved sender or daily quota unavailable.');
+        break;
+      }
+      const sample={artist:'MacMc'};
+      soBBSet_(acceptanceNotices,i,'Delivery Status','Attempted');
+      soBBSet_(acceptanceNotices,i,'Attempted On',new Date());
+      try{
+        MailApp.sendEmail({
+          to:designTestTo,
+          subject:'[DESIGN TEST] Sync Opps. First 40 Catalog Beta Acceptance',
+          body:soBBAcceptanceEmail_(sample),
+          htmlBody:soBBAcceptanceHtml_(sample),
+          name:'Sync Opps.',replyTo:SO_BB_V1.acceptanceSender
+        });
+        soBBSet_(acceptanceNotices,i,'Delivery Status','Sent');
+        soBBSet_(acceptanceNotices,i,'Sent On',new Date());
+        soBBSet_(acceptanceNotices,i,'Admin Notes (PRIVATE)',
+          'INTERNAL DESIGN TEST ONLY. Not a real application or beta slot. One-time message sent to approved test inbox.');
+        counters.emails++;
+      }catch(error){
+        soBBSet_(acceptanceNotices,i,'Delivery Status','Failed');
+        soBBSet_(acceptanceNotices,i,'Admin Notes (PRIVATE)',
+          'INTERNAL DESIGN TEST ONLY. Failed; no automatic retry: '+soBBText_(String(error),300));
+      }
+      break;
+    }
     // Buyer inquiries are accepted from published, approved public songs only.
     const seenBuyer=new Set(buyers.rows.map(r=>soBBC_(r,buyers,'Inquiry ID')));
     for(const sub of forms.buyer.slice().sort(soBBSort_)){
@@ -588,34 +626,48 @@ function soBBAcceptanceHtmlEscape_(value){
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function soBBAcceptanceHtml_(member){
+  // Table-based email styling follows the public Ready to License site's warm
+  // cream, orange-ribbon, dark editorial heading and circular S identity.
+  // All elements use inline styles for common mail-client support. The orange
+  // ribbon has a solid-color fallback if an email client ignores gradients.
   const artist=soBBAcceptanceHtmlEscape_(member.artist);
   const formUrl=soBBAcceptanceHtmlEscape_(SO_BB_V1.memberSongFormUrl);
   return [
-    '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
-    '<body style="margin:0;padding:0;background-color:#f7f7f8;font-family:Arial,Helvetica,sans-serif;color:#20242a;">',
-    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#f7f7f8;padding:28px 12px;"><tr><td align="center">',
-    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#ffffff;border:1px solid #ece9e7;border-radius:12px;overflow:hidden;">',
-    '<tr><td style="height:6px;background:#ed8b63;font-size:0;line-height:0;">&nbsp;</td></tr>',
-    '<tr><td style="padding:29px 34px 10px;">',
-    '<p style="margin:0 0 20px;color:#c36d49;font-size:13px;font-weight:bold;letter-spacing:1.4px;">SYNC OPPS.</p>',
-    '<h1 style="margin:0 0 18px;color:#20242a;font-size:28px;line-height:1.25;font-weight:bold;">You&#39;re accepted!</h1>',
-    '<p style="margin:0 0 12px;font-size:16px;line-height:1.6;">Congratulations, '+artist+'!</p>',
-    '<p style="margin:0 0 23px;font-size:15px;line-height:1.7;color:#42464c;">Your application for the <strong>Sync Opps. First 40 Ready to License Catalog Beta</strong> has been approved.</p>',
-    '<p style="margin:0 0 8px;font-size:12px;line-height:1.4;color:#a15d42;font-weight:bold;letter-spacing:1px;">YOUR NEXT STEP</p>',
-    '<p style="margin:0 0 17px;font-size:16px;line-height:1.5;font-weight:bold;">Submit your music to the catalog</p>',
-    '<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#d97850" style="border-radius:7px;">',
-    '<a href="'+formUrl+'" style="display:inline-block;padding:14px 23px;border-radius:7px;background:#d97850;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Submit Your Music</a>',
-    '</td></tr></table>',
-    '<p style="margin:14px 0 0;font-size:13px;line-height:1.6;color:#62666d;">Use your verified Patreon email. Include an authorized streaming link or MP3 preview (up to 10 MB) and accurate songwriter, publishing and master ownership details.</p>',
-    '<hr style="border:0;border-top:1px solid #eae7e5;margin:28px 0 23px;">',
-    '<h2 style="margin:0 0 9px;font-size:17px;line-height:1.4;color:#20242a;">What happens next?</h2>',
-    '<p style="margin:0 0 15px;font-size:14px;line-height:1.75;color:#42464c;">Every submission is reviewed before public playback. Approved music or previews can be heard by anyone in our public catalog. We will share the catalog with our licensing partners and promote it through paid advertising targeting music buyers.</p>',
-    '<p style="margin:0 0 25px;font-size:14px;line-height:1.7;color:#42464c;">You keep your rights and 100% of licensing fees. Participation does not guarantee publication, buyer inquiries or licensing placements.</p>',
-    '<p style="margin:0;font-size:15px;line-height:1.7;font-weight:bold;">The Sync Opps. team</p>',
+    '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta charset="UTF-8"></head>',
+    '<body style="margin:0;padding:0;background:#f9f4ef;font-family:Arial,Helvetica,sans-serif;color:#1e1815;">',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%;background-color:#f9f4ef;"><tr><td align="center" style="padding:28px 12px 36px;">',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width:100%;max-width:600px;background:#fffdfa;border:1px solid #f0e1d7;border-radius:14px;overflow:hidden;">',
+    '<tr><td style="padding:23px 28px;background:#fffdfa;">',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr>',
+    '<td valign="middle" style="padding-right:13px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" valign="middle" width="48" height="48" style="width:48px;height:48px;border:3px solid #ffffff;border-radius:50%;background:#fbe6da;color:#ee8142;font-size:34px;font-weight:900;line-height:48px;box-shadow:0 2px 9px #f0d2c3;">S</td></tr></table></td>',
+    '<td valign="middle" style="font-size:23px;font-weight:900;letter-spacing:-1px;color:#1a1513;white-space:nowrap;">Sync Opps.</td>',
+    '<td valign="middle" style="padding-left:14px;font-size:13px;font-style:italic;color:#695b54;white-space:nowrap;">Ready to License.</td>',
+    '</tr></table></td></tr>',
+    '<tr><td style="padding:31px 30px 34px;background-color:#f5c49d;background-image:linear-gradient(180deg,#f1d0b5 0%,#f7b47d 26%,#f8b486 48%,#f9d3b6 78%,#f4cfb3 100%);">',
+    '<p style="margin:0 0 14px;font-size:11px;font-weight:800;letter-spacing:2px;color:#87360e;">SYNC OPPS. FIRST 40 CATALOG BETA</p>',
+    '<h1 style="margin:0;font-size:38px;line-height:1.16;letter-spacing:-1.5px;font-weight:900;color:#1a1513;">You&#39;re accepted.</h1>',
     '</td></tr>',
-    '<tr><td style="padding:15px 34px 22px;background:#fcfaf9;border-top:1px solid #f1eded;">',
-    '<p style="margin:0;font-size:12px;line-height:1.6;color:#777b81;">Having trouble with the button? <a href="'+formUrl+'" style="color:#ad603f;text-decoration:underline;">Open the submission form</a>.</p>',
-    '</td></tr></table></td></tr></table></body></html>'
+    '<tr><td style="padding:30px 30px 23px;background:#fffdfa;">',
+    '<h2 style="margin:0 0 12px;font-size:27px;line-height:1.24;letter-spacing:-.7px;color:#1a1513;font-weight:900;">Congratulations, '+artist+'!</h2>',
+    '<p style="margin:0 0 25px;font-size:15px;line-height:1.7;color:#34302e;">Your application for the <strong>Sync Opps. First 40 Ready to License Catalog Beta</strong> has been approved.</p>',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#fff0e7;border:1px solid #fbe2d2;border-radius:13px;"><tr><td style="padding:25px 23px 23px;">',
+    '<p style="margin:0 0 9px;font-size:12px;line-height:1.3;font-weight:800;letter-spacing:1.4px;color:#b84911;">NEXT STEP</p>',
+    '<h3 style="margin:0 0 20px;font-size:20px;line-height:1.35;font-weight:900;letter-spacing:-.4px;color:#201814;">Submit your music to the catalog.</h3>',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#b94505;border-radius:28px;">',
+    '<a href="'+formUrl+'" style="display:inline-block;padding:13px 24px;background:#b94505;border-radius:28px;color:#ffffff;font-size:15px;line-height:1.4;font-weight:bold;text-decoration:none;">Submit Your Music &rarr;</a>',
+    '</td></tr></table>',
+    '<p style="margin:19px 0 0;font-size:13px;line-height:1.65;color:#3c332e;">Use your verified Patreon email. Include an authorized streaming link or MP3 preview (up to 10 MB) and accurate songwriter, publishing and master ownership details.</p>',
+    '</td></tr></table>',
+    '<hr style="height:1px;border:0;background:#f1d8c8;margin:27px 0 25px;">',
+    '<h3 style="margin:0 0 13px;font-size:23px;line-height:1.3;letter-spacing:-.5px;font-weight:900;color:#1a1513;">What happens next?</h3>',
+    '<p style="margin:0 0 16px;font-size:14px;line-height:1.75;color:#3b3530;">Every submission is reviewed before public playback. Approved music or previews can be heard by anyone in our public catalog. We will share the catalog with our licensing partners and promote it through paid advertising targeting music buyers.</p>',
+    '<p style="margin:0 0 23px;font-size:14px;line-height:1.75;color:#3b3530;">You keep your rights and 100% of licensing fees. Participation does not guarantee publication, buyer inquiries or licensing placements.</p>',
+    '<p style="margin:0;font-size:15px;line-height:1.65;color:#27201b;font-style:italic;font-weight:bold;">The Sync Opps. team</p>',
+    '</td></tr>',
+    '<tr><td style="padding:19px 26px 22px;text-align:center;background:#f8dfce;border-top:1px solid #f2d3c1;">',
+    '<p style="margin:0;font-size:12px;line-height:1.6;color:#5a4b44;">Having trouble with the button? <a href="'+formUrl+'" style="color:#a43f0b;text-decoration:underline;font-weight:bold;">Open the submission form</a>.</p>',
+    '</td></tr>',
+    '</table></td></tr></table></body></html>'
   ].join('');
 }
 function soBBBuyerEmail_(r){
