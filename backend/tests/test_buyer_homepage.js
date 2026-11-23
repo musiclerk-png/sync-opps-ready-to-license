@@ -102,6 +102,7 @@ const audio=Object.assign(fakeControl(),{
 });
 const player=fakeControl(),play=fakeControl(),timeline=fakeControl(),
  state=fakeControl(),elapsed=fakeControl(),duration=fakeControl(),mute=fakeControl();
+state.textContent='Ready to listen'; // Matches the server-rendered HTML before handlers attach.
 const title=fakeControl();title.textContent='Synthetic Track';
 preview.querySelector=sel=>({
  'audio[data-managed-audio]':audio,'[data-mp3-play]':play,'[data-mp3-seek]':timeline,
