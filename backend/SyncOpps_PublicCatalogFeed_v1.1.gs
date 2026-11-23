@@ -218,7 +218,7 @@ function soPublicTablesV12_(id) {
     return tables;
   }catch(err) {
     const message=String(err && err.message || '');
-    SO_PUBLIC_FEED_READ_ERROR_V12=/^Batch read (API_DISABLED|OAUTH_SCOPE|HTTP_\\d{3})$/.test(message)?
+    SO_PUBLIC_FEED_READ_ERROR_V12=/^Batch read (API_DISABLED|OAUTH_SCOPE|HTTP_\d{3})$/.test(message)?
       message.slice('Batch read '.length):
       /^Batch read (incomplete|invalid range|wrong tab)$/.test(message)?'INVALID_BATCH_RESPONSE':
       /auth|permission|scope|oauth/i.test(message)?'AUTHORIZATION_REQUIRED':
