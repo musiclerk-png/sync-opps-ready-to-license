@@ -12,6 +12,9 @@ check('Buyer hero displayed',html.includes('Find the right song for your next pr
 check('Clear licensing steps',html.includes('How Music Licensing Works'));
 check('Four buyer search inputs', ['searchInput','genreInput','moodInput','useInput'].every(x=>html.includes('id="'+x+'"'))&&!html.includes('sourceInput'));
 check('No sample catalog records',!html.includes('Golden Hour Drive')&&!html.includes('const tracks='));
+check('Initial catalog state does not misleadingly display zero songs before live approval',html.includes('id="resultCount">Loading music...')&&html.includes('<strong id="emptyTitle">Loading approved music...</strong>')&&html.includes('id="emptyState" role="status" aria-live="polite"><strong'));
+check('Live feed origins preconnected without preloading or caching track data',html.includes('<link rel="preconnect" href="https://script.google.com">')&&html.includes('<link rel="preconnect" href="https://script.googleusercontent.com">')&&!html.includes('<link rel="preload" href="https://script.google.com'));
+
 check('Approved feed still used',html.includes("await readLiveFeed(cfg.endpoint||'')"));
 check('No static catalog fallback remains',!html.includes("cfg.mode==='static'")&&!html.includes("fetch('./catalog.json'"));
 check('Only schema-v1 live config and feed payloads are accepted',html.includes("cfg?.schemaVersion!==1 || cfg.mode!=='live'")&&html.includes("obj.schemaVersion!==1 || !Array.isArray(obj.songs)"));
