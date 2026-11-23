@@ -118,9 +118,9 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
    getContentText:()=>JSON.stringify(formattedResponse())
  });
  const parseJsonp=txt=>{
-   const match=txt.match(/^window\\.syncOppsApprovedFeedV1\\((\\{[\\s\\S]*\\})\\);$/);
-   assert.ok(match,'Exact approved JSONP wrapper required');
-   return JSON.parse(match[1]);
+   const prefix='window.syncOppsApprovedFeedV1(';
+   assert.ok(txt.startsWith(prefix)&&txt.endsWith(');'),'Exact approved JSONP wrapper required');
+   return JSON.parse(txt.slice(prefix.length,-2));
  };
  const normal=parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt);
  assert.equal(normal.readDiagnostics,undefined,'Normal visitor response has no performance metadata');
