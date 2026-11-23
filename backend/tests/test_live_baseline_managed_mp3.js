@@ -111,9 +111,32 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
  pctx.UrlFetchApp.fetch=()=>{throw Error('synthetic remote network failure');};
  assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx))),baseline,
    'Network failure must use fresh eligible data, not a stored snapshot');
+ // The optional probe must not change normal buyer-facing JSONP results.
+ db=structuredClone(fixture());
+ pctx.UrlFetchApp.fetch=()=>({
+   getResponseCode:()=>200,
+   getContentText:()=>JSON.stringify(formattedResponse())
+ });
+ const parseJsonp=txt=>{
+   const match=txt.match(/^window\\.syncOppsApprovedFeedV1\\((\\{[\\s\\S]*\\})\\);$/);
+   assert.ok(match,'Exact approved JSONP wrapper required');
+   return JSON.parse(match[1]);
+ };
+ const normal=parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt);
+ assert.equal(normal.readDiagnostics,undefined,'Normal visitor response has no performance metadata');
+ assert.equal(normal.songs.length,1);
+ const probe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(probe.readDiagnostics.path,'batch');
+ assert.ok(Number.isFinite(probe.readDiagnostics.serverMs)&&probe.readDiagnostics.serverMs>=0);
+ assert.ok(!JSON.stringify(probe).includes('@private.test'));
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>403,getContentText:()=>''});
+ const legacyProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(legacyProbe.readDiagnostics.path,'legacy');
+ assert.equal(legacyProbe.songs.length,1);
  delete pctx.ScriptApp;
  delete pctx.UrlFetchApp;
  console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
+ console.log('PASS optional nonprivate batch versus legacy timing probes');
 }
 
 function checkSoulPocketReadOnlyPreflight(opts={}){
