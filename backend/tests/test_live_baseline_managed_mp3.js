@@ -127,12 +127,22 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
  assert.equal(normal.songs.length,1);
  const probe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
  assert.equal(probe.readDiagnostics.path,'batch');
+ assert.equal(probe.readDiagnostics.fallbackReason,'none');
  assert.ok(Number.isFinite(probe.readDiagnostics.serverMs)&&probe.readDiagnostics.serverMs>=0);
  assert.ok(!JSON.stringify(probe).includes('@private.test'));
  pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>403,getContentText:()=>''});
  const legacyProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
  assert.equal(legacyProbe.readDiagnostics.path,'legacy');
+ assert.equal(legacyProbe.readDiagnostics.fallbackReason,'HTTP_403');
  assert.equal(legacyProbe.songs.length,1);
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>403,getContentText:()=>
+   JSON.stringify({error:{message:'Google Sheets API has not been used in project, is disabled',status:'PERMISSION_DENIED'}})});
+ const disabledProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(disabledProbe.readDiagnostics.fallbackReason,'API_DISABLED');
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>403,getContentText:()=>
+   JSON.stringify({error:{details:[{reason:'ACCESS_TOKEN_SCOPE_INSUFFICIENT'}]}})});
+ const scopeProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(scopeProbe.readDiagnostics.fallbackReason,'OAUTH_SCOPE');
  delete pctx.ScriptApp;
  delete pctx.UrlFetchApp;
  console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
