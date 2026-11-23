@@ -12,6 +12,13 @@ check('Buyer hero displayed',html.includes('Find the right song for your next pr
 check('Clear licensing steps',html.includes('How Music Licensing Works'));
 check('Four buyer search inputs', ['searchInput','genreInput','moodInput','useInput'].every(x=>html.includes('id="'+x+'"'))&&!html.includes('sourceInput'));
 check('No sample catalog records',!html.includes('Golden Hour Drive')&&!html.includes('const tracks='));
+const betaHtml=fs.readFileSync('beta/index.html','utf8');
+const legalPDF=fs.readFileSync('legal/sync-opps-terms-and-privacy.pdf');
+check('Combined Terms and Privacy document is a real public PDF',legalPDF.length>20000&&legalPDF.subarray(0,5).toString()==='%PDF-');
+check('Catalog and Beta footer show exact requested copyright', [html,betaHtml].every(s=>s.includes('Copyright 2026 - 2027 Sync Opps. All rights reserved.')));
+check('Both footer policies open the same PDF, with correct section pages',html.includes('href="legal/sync-opps-terms-and-privacy.pdf#page=2"')&&html.includes('href="legal/sync-opps-terms-and-privacy.pdf#page=5"')&&betaHtml.includes('href="../legal/sync-opps-terms-and-privacy.pdf#page=2"')&&betaHtml.includes('href="../legal/sync-opps-terms-and-privacy.pdf#page=5"'));
+check('Both legal footer links remain accessible on mobile', [html,betaHtml].every(s=>s.includes('<div class="footerlegal-links" role="navigation" aria-label="Legal policies">')));
+
 check('Initial catalog state does not misleadingly display zero songs before live approval',html.includes('id="resultCount">Loading music...')&&html.includes('<strong id="emptyTitle">Loading approved music...</strong>')&&html.includes('id="emptyState" role="status" aria-live="polite"><strong'));
 check('Live feed origins preconnected without preloading or caching track data',html.includes('<link rel="preconnect" href="https://script.google.com">')&&html.includes('<link rel="preconnect" href="https://script.googleusercontent.com">')&&!html.includes('<link rel="preload" href="https://script.google.com'));
 
