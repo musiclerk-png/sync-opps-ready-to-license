@@ -70,7 +70,8 @@ check('Approved MP3 uses one compact always-present player',card.includes('data-
 check('Compact MP3 omits native controls and visible download action',card.includes('controlsList="nodownload"')&&!card.includes('<audio controls'));
 check('Play button is a real play/pause button, not a close control',card.includes('class="pause-icon"')&&!card.includes('Close player'));
 check('Progress and time are present before the first click',card.includes('data-elapsed')&&card.includes('data-duration')&&card.includes('class="managed-timeline"'));
-check('Great for categories collapse to three by default',card.includes('+')&&card.includes('data-more-uses')&&card.includes('data-extra-use hidden'));
+const manyUseCard=cardHtml({...good,uses:['Film','TV','Ads','Podcasts','Games']});
+check('Great for categories collapse to three by default',manyUseCard.includes('+2 more')&&manyUseCard.includes('data-more-uses')&&manyUseCard.includes('data-extra-use hidden'));
 check('No raw URL from private form included in a managed MP3 player',!card.includes('tally.so/r/') || card.includes('https://tally.so/r/jeoYaE?'));
 check('Native iframe providers remain unchanged',mediaFunctionSource.includes("p.type==='soundcloud'")&&mediaFunctionSource.includes("p.type==='spotify'")&&mediaFunctionSource.includes("p.type==='youtube'")&&mediaFunctionSource.includes("p.type==='bandcamp'"));
 const soundcloud=normalizeSong({...seed,source:'SoundCloud',player:{type:'soundcloud',url:'https://soundcloud.com/example/test'}});
