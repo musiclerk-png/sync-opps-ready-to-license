@@ -22,6 +22,9 @@ const SO_BB_V1=Object.freeze({
   sheetProperty:'CATALOG_SHEET_ID', apiProperty:'TALLY_API_KEY',
   betaForm:'YjGvPd', buyerForm:'jeoYaE',
   betaTab:'Beta Applications (PRIVATE)', beta40Tab:'Beta 40',
+  acceptanceTab:'Beta Acceptance Notices (PRIVATE)',
+  acceptanceSender:'syncoppsofficial@gmail.com',
+  memberSongFormUrl:'https://tally.so/r/peo0gV', maxAcceptanceEmailsPerRun:5,
   buyerTab:'Buyer Inquiries', membersTab:'Members', songsTab:'Songs', stagingTab:'Public Staging',
   writerTab:'Writer Splits', publishingTab:'Publishing Splits', masterTab:'Master Splits',
   maxApiPages:10, pageSize:100, maxNewPerRun:40,
@@ -73,9 +76,11 @@ function syncOppsProcessBetaBuyer(e){
     const writers=soBBTable_(book,SO_BB_V1.writerTab);
     const publishing=soBBTable_(book,SO_BB_V1.publishingTab);
     const masters=soBBTable_(book,SO_BB_V1.masterTab);
+    const acceptanceNotices=soBBTable_(book,SO_BB_V1.acceptanceTab);
     // Complete Tally pagination was validated before acquiring this lock.
     const counters={newBeta:0,duplicateApplicants:0,pendingEligibility:0,
-      acceptedBeta:0,waitlisted:0,newBuyer:0,buyerSent:0,buyerBlocked:0,emails:0};
+      acceptedBeta:0,waitlisted:0,acceptanceSent:0,acceptanceBlocked:0,
+      newBuyer:0,buyerSent:0,buyerBlocked:0,emails:0};
     const emailIndex=soBBMemberEmailIndex_(members);
     const seenApps=new Set(beta.rows.map(r=>soBBC_(r,beta,'Tally Submission ID')));
     const seenApplicantEmails=new Set(beta.rows.map(r=>soBBEmail_(soBBC_(r,beta,'Patreon Email (PRIVATE)'))).filter(Boolean));
@@ -152,7 +157,59 @@ function syncOppsProcessBetaBuyer(e){
       soBBSet_(betaCurrent,i,'Processing Status','Accepted');
       soBBSet_(betaCurrent,i,'Last Reviewed On',now);
       counters.acceptedBeta++;
-      // Deliberately no automatic accepted-member email until outreach wording is approved.
+      // Notifications are handled separately after the slot is fully recorded.
+    }
+    // Existing Accepted applications are eligible, too: a code rollout must not
+    // silently skip previously accepted members. Never send more than once.
+    const noticeIds=new Set(acceptanceNotices.rows.map(r=>
+      soBBC_(r,acceptanceNotices,'Tally Submission ID')).filter(Boolean));
+    const effectiveSender=typeof Session!=='undefined' && Session.getEffectiveUser
+      ? soBBEmail_(Session.getEffectiveUser().getEmail()) : '';
+    const senderAuthorized=effectiveSender===SO_BB_V1.acceptanceSender;
+    let acceptanceThisRun=0;
+    for(const app of betaCurrent.rows){
+      if(acceptanceThisRun>=SO_BB_V1.maxAcceptanceEmailsPerRun)break;
+      const id=soBBC_(app,betaCurrent,'Tally Submission ID');
+      if(!id || noticeIds.has(id))continue;
+      const candidate=soBBAcceptanceEligible_(app,betaCurrent,emailIndex,members,betaSlots);
+      if(!candidate)continue;
+      if(!senderAuthorized){
+        console.warn('ACCEPTANCE_SENDER_BLOCKED: installable trigger must run as the approved Sync Opps. sender. No acceptance email sent.');
+        counters.acceptanceBlocked++;continue;
+      }
+      if(counters.emails>=SO_BB_V1.maxEmailPerRun ||
+         MailApp.getRemainingDailyQuota()<1){
+        console.warn('ACCEPTANCE_QUOTA_BLOCKED: no email attempted; can retry on a later run.');
+        counters.acceptanceBlocked++;continue;
+      }
+      // Claim the unique application BEFORE MailApp. Even if execution stops
+      // mid-send, the Attempted record prevents an automatic duplicate.
+      const i=soBBAppend_(acceptanceNotices,{
+        'Tally Submission ID':id,'Member ID':candidate.memberId,
+        'Patreon Email (PRIVATE)':candidate.email,'Beta Slot':candidate.slot,
+        'Delivery Status':'Attempted','Attempted On':new Date(),
+        'Sent On':'','Admin Notes (PRIVATE)':
+          'One-time transactional acceptance attempt claimed before sending. Do not automatically retry.'
+      });
+      noticeIds.add(id);
+      acceptanceThisRun++;
+      try{
+        MailApp.sendEmail({
+          to:candidate.email,
+          subject:'You are accepted: Sync Opps. First 40 Catalog Beta',
+          body:soBBAcceptanceEmail_(candidate),
+          name:'Sync Opps.',replyTo:SO_BB_V1.acceptanceSender
+        });
+        soBBSet_(acceptanceNotices,i,'Delivery Status','Sent');
+        soBBSet_(acceptanceNotices,i,'Sent On',new Date());
+        counters.acceptanceSent++;counters.emails++;
+      }catch(error){
+        soBBSet_(acceptanceNotices,i,'Delivery Status','Failed');
+        soBBSet_(acceptanceNotices,i,'Admin Notes (PRIVATE)',
+          'Send failure, no automatic retry. Review manually: '+
+          soBBText_(String(error),450));
+        counters.acceptanceBlocked++;
+      }
     }
     // Buyer inquiries are accepted from published, approved public songs only.
     const seenBuyer=new Set(buyers.rows.map(r=>soBBC_(r,buyers,'Inquiry ID')));
@@ -489,6 +546,40 @@ function soBBPlayerAllowedV11_(source,stream){
   if(source.includes('apple'))return host==='embed.music.apple.com';
   if(source.includes('disco'))return ['disco.ac','www.disco.ac'].includes(host);
   return (source.includes('mp3')||source.includes('audio'))&&/\.mp3$/i.test(path);
+}
+function soBBAcceptanceEligible_(row,apps,emailIndex,members,betaSlots){
+  // An accepted status alone never authorizes a message.
+  if(soBBC_(row,apps,'Processing Status')!=='Accepted' ||
+     soBBC_(row,apps,'Admin Decision')!=='Approve' ||
+     soBBC_(row,apps,'Identity Verification')!=='Verified' ||
+     soBBC_(row,apps,'Paid Eligibility')!=='Active Paid')return null;
+  const email=soBBEmail_(soBBC_(row,apps,'Patreon Email (PRIVATE)'));
+  if(!soBBEmailValid_(email))return null;
+  const member=soBBUniqueMember_(emailIndex,email);
+  if(!soBBEligibleMember_(member,members))return null;
+  const memberId=soBBC_(member,members,'Member ID');
+  if(!memberId || soBBC_(row,apps,'Member ID (Matched)')!==memberId)return null;
+  const slot=soBBC_(row,apps,'Assigned Beta Slot');
+  if(!/^(?:[1-9]|[1-3][0-9]|40)$/.test(slot))return null;
+  const matches=betaSlots.rows.filter(r=>soBBC_(r,betaSlots,'Beta Slot')===slot&&
+    soBBC_(r,betaSlots,'Member ID')===memberId&&
+    soBBEmail_(soBBC_(r,betaSlots,'Patreon Email (PRIVATE)'))===email&&
+    soBBC_(r,betaSlots,'Invite Status')==='Accepted'&&
+    soBBC_(r,betaSlots,'Eligibility Verified')==='Yes');
+  if(matches.length!==1)return null;
+  const displayName=soBBHeader_(soBBC_(row,apps,'Artist / Band (Claimed)')||
+    soBBC_(member,members,'Artist / Band Display Name'));
+  return {email,memberId,slot,artist:displayName||'Artist'};
+}
+function soBBAcceptanceEmail_(member){
+  return 'Congratulations, '+member.artist+'!\\n\\n'+
+    'Your application for the Sync Opps. First 40 Ready to License Catalog Beta is approved.\\n'+
+    'Your beta position is '+member.slot+' of 40.\\n\\n'+
+    'Submit your music here: '+SO_BB_V1.memberSongFormUrl+'\\n\\n'+
+    'Use your verified Patreon membership email and submit an authorized music link or MP3 preview (up to 10 MB), along with accurate songwriter, publishing and master ownership details. Every song is reviewed separately before public playback.\\n\\n'+
+    'Approved previews can be played by anyone in our public catalog. We will share the catalog with our existing licensing partners and promote it through paid advertising targeting music buyers.\\n\\n'+
+    'You retain your rights and 100% of licensing fees. Acceptance does not guarantee publication, buyer inquiries or licensing placements.\\n\\n'+
+    'Sync Opps.';
 }
 function soBBBuyerEmail_(r){
  return 'A potential music licensing buyer has submitted an inquiry through the Sync Opps. Ready to License Catalog.\n\n'+
