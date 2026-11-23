@@ -37,6 +37,14 @@ function setup(overrides={}) {
  if(overrides.noHostAuth)db.Songs[0]['Preview Host Authorization (PRIVATE)']='Pending';
  if(overrides.fakeHost)db.Songs[0]['Authorized Embed Reference']='https://evil.example/testcloud/video/upload/v123/'+asset+'.mp3';
  if(overrides.withdrawn)db.Songs[0]['Catalog Status']='Withdrawn';
+ if(overrides.designTest){
+   db['Beta Acceptance Notices (PRIVATE)'].push({
+     'Tally Submission ID':'DESIGN-TEST-20261123-001',
+     'Patreon Email (PRIVATE)':overrides.wrongDesignTo?'other@example.test':'thesyncopps@gmail.com',
+     'Delivery Status':'Test Pending',
+     'Admin Notes (PRIVATE)':'SYNTHETIC EMAIL DESIGN TEST ONLY'
+   });
+ }
  if(overrides.acceptedApp){
    db['Beta Applications (PRIVATE)'].push({
      'Tally Submission ID':'SYNTHAPP001','Patreon Email (PRIVATE)':memberEmail,
@@ -133,5 +141,38 @@ test('branded HTML escapes untrusted artist display name',()=>{
   const mail=x.send().find(e=>e.subject.includes('First 40'));
   assert.ok(mail.htmlBody.includes('Congratulations, Synthetic Artist!'));
   assert.equal(mail.htmlBody.includes('<script'),false);
+});
+test('branded internal preview sends only once through authorized sender',()=>{
+  const x=setup({designTest:true}),r=x.run();
+  const mails=x.send().filter(e=>e.subject.includes('[DESIGN TEST]'));
+  assert.equal(mails.length,1);
+  assert.equal(mails[0].to,'thesyncopps@gmail.com');
+  assert.equal(mails[0].replyTo,'syncoppsofficial@gmail.com');
+  assert.ok(mails[0].htmlBody.includes('SYNC OPPS. FIRST 40 CATALOG BETA'));
+  assert.ok(mails[0].htmlBody.includes('Ready to License.'));
+  assert.ok(mails[0].htmlBody.includes('Congratulations, MacMc!'));
+  assert.ok(mails[0].htmlBody.includes('Submit Your Music'));
+  assert.ok(mails[0].htmlBody.includes('The Sync Opps. team'));
+  assert.ok(mails[0].htmlBody.includes('background-image:linear-gradient'));
+  assert.equal(mails[0].htmlBody.includes('1 of 40'),false);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Sent');
+  x.run();
+  assert.equal(x.send().filter(e=>e.subject.includes('[DESIGN TEST]')).length,1);
+});
+test('internal preview requires correct sender and the exact test recipient',()=>{
+  const unauthorized=setup({designTest:true,sender:'musiclerk@gmail.com'});
+  unauthorized.run();
+  assert.equal(unauthorized.send().filter(e=>e.subject.includes('[DESIGN TEST]')).length,0);
+  assert.equal(unauthorized.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Test Pending');
+  const wrong=setup({designTest:true,wrongDesignTo:true});
+  wrong.run();
+  assert.equal(wrong.send().filter(e=>e.subject.includes('[DESIGN TEST]')).length,0);
+});
+test('failed design email is recorded and cannot automatically retry',()=>{
+  const x=setup({designTest:true,failEmail:true});
+  x.run();
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Failed');
+  x.run();
+  assert.equal(x.send().filter(e=>e.subject.includes('[DESIGN TEST]')).length,0);
 });
 console.log('TOTAL '+tested+' synthetic buyer/acceptance routing and idempotency scenarios passed');
