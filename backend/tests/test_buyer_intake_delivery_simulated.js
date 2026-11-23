@@ -84,7 +84,14 @@ test('accepted member receives exactly one branded email and same application is
   assert.equal(acceptance[0].to,memberEmail);
   assert.equal(acceptance[0].replyTo,'syncoppsofficial@gmail.com');
   assert.match(acceptance[0].body,/https:\/\/tally.so\/r\/peo0gV/);
-  assert.match(acceptance[0].body,/1 of 40/);
+  assert.equal(acceptance[0].body.includes('1 of 40'),false);
+  assert.equal(acceptance[0].body.includes('The Sync Opps. team'),true);
+  assert.ok(acceptance[0].htmlBody.includes('Submit Your Music'));
+  assert.ok(acceptance[0].htmlBody.includes('The Sync Opps. team'));
+  assert.ok(acceptance[0].htmlBody.includes('href="https://tally.so/r/peo0gV"'));
+  assert.equal(acceptance[0].htmlBody.includes('1 of 40'),false);
+  assert.equal(acceptance[0].htmlBody.includes('beta position'),false);
+  assert.ok(acceptance[0].htmlBody.includes('<table role="presentation"'));
   assert.match(acceptance[0].body,/public catalog/);
   assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Sent');
   x.run();
@@ -118,5 +125,13 @@ test('failed acceptance send creates durable no-retry record',()=>{
   x.run();
   assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,1);
   assert.equal(x.send().filter(e=>e.subject.includes('First 40')).length,0);
+});
+test('branded HTML escapes untrusted artist display name',()=>{
+  const x=setup({acceptedApp:true});
+  const result=x.run();
+  assert.equal(result.acceptanceSent,1);
+  const mail=x.send().find(e=>e.subject.includes('First 40'));
+  assert.ok(mail.htmlBody.includes('Congratulations, Synthetic Artist!'));
+  assert.equal(mail.htmlBody.includes('<script'),false);
 });
 console.log('TOTAL '+tested+' synthetic buyer/acceptance routing and idempotency scenarios passed');
