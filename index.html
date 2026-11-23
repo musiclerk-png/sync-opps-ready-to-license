@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<!-- Start live catalog feed connections early; song data still comes only from fresh approval checks. -->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com">
 <title>Find Music to License | Sync Opps. Ready to License</title>
 <style>
 :root { --ink:#181513; --muted:#6f6159; --burnt:#a83b06; --burnt2:#c44e0b; --peach:#f9dec9; --pale:#fff9f4; --paper:#fffefd; --line:#e9d9ca; --soft:#fbf1e8; --shadow:0 15px 40px rgba(87,44,19,.075); }
@@ -104,7 +107,7 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
 <div class="launch"><div class="wrap launch-inner"><span><strong>Find music</strong> by mood, genre or project</span><span class="sep"></span><span><strong>Review ownership</strong> before you inquire</span><span class="sep"></span><span><strong>License directly</strong> with the authorized rights holders</span></div></div>
 <main>
 <section class="catalog wrap" id="catalog">
-  <div class="sectionhead"><div><div class="eyebrow">The music behind your next story</div><h2>Browse the Music Catalog</h2><p class="lead">Find music for film, television, advertising, video games, podcasts and more.</p></div><span class="count-bubble" id="resultCount">0 songs</span></div>
+  <div class="sectionhead"><div><div class="eyebrow">The music behind your next story</div><h2>Browse the Music Catalog</h2><p class="lead">Find music for film, television, advertising, video games, podcasts and more.</p></div><span class="count-bubble" id="resultCount">Loading music...</span></div>
   <div class="toolbar" aria-label="Catalog search controls">
     <div class="toolrow"><div class="field"><label for="searchInput">SEARCH TRACKS</label><div class="searchbox"><span class="mag" aria-hidden="true">⌕</span><input id="searchInput" autocomplete="off" placeholder="Song, artist, keyword or scene..."></div></div>
     <div class="field"><label for="genreInput">GENRE</label><select id="genreInput"><option value="">All genres</option></select></div>
@@ -114,7 +117,7 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
     <div class="filterbottom"><span class="micro">Preview playback and licensing details may vary by track.</span><button class="clear" id="resetFilters">Clear all filters</button></div>
   </div>
   <div class="grid" id="songGrid" aria-live="polite"></div>
-  <div class="empty" id="emptyState" role="status" aria-live="polite" hidden><strong id="emptyTitle">New music is on its way.</strong><span id="emptyDescription">The first catalog selections will appear here when available.</span><div><button class="btn btn-outline" style="margin-top:18px" id="emptyReset" hidden>Clear search filters</button><button class="btn btn-outline" style="margin-top:18px" id="emptyRetry" hidden>Try loading again</button></div></div>
+  <div class="empty" id="emptyState" role="status" aria-live="polite"><strong id="emptyTitle">Loading approved music...</strong><span id="emptyDescription">Checking the current catalog listings.</span><div><button class="btn btn-outline" style="margin-top:18px" id="emptyReset" hidden>Clear search filters</button><button class="btn btn-outline" style="margin-top:18px" id="emptyRetry" hidden>Try loading again</button></div></div>
 </section>
 <section class="how" id="about"><div class="wrap"><h2>How Music Licensing Works</h2><div class="steps"><div class="step"><div class="roundicon" aria-hidden="true">1</div><div><strong>Discover music</strong><p>Find songs that fit your story and listen directly on the catalog page.</p></div></div><div class="step"><div class="roundicon" aria-hidden="true">2</div><div><strong>Review licensing details</strong><p>See song-specific composition, publishing and master recording ownership information.</p></div></div><div class="step"><div class="roundicon" aria-hidden="true">3</div><div><strong>Contact the rights holders</strong><p>Send an inquiry about your project and arrange licensing directly. Sync Opps. takes no commission.</p></div></div></div></div></section>
 <section class="artists-section" id="for-buyers"><div class="wrap"><div class="artist-panel"><div><div class="eyebrow">For film, television, brands and creators</div><h2>Hear something that fits?</h2><p>Open a song’s <strong>Licensing Info</strong> to review its details, then use <strong>Contact Artist</strong> to describe your project. The authorized licensing representative can confirm availability, approvals and fees.</p><p>Licensing is negotiated directly with the rights holders. Sync Opps. does not collect a commission on licensing fees.</p><a class="btn btn-primary" href="#catalog">Explore the Catalog →</a></div><div class="mini-facts"><div class="fact"><strong>100%</strong><span>Licensing fees retained by artists</span></div><div class="fact"><strong>0%</strong><span>Sync Opps. licensing commission</span></div><a href="beta/" style="display:inline-block;margin-top:13px;font-size:12px;color:#a03c10;text-decoration:underline;">Are you an artist? Learn about participating.</a></div></div></div></section>
