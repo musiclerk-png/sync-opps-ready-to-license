@@ -58,4 +58,61 @@ test('master public consent missing suppresses both','Managed MP3 Preview',d=>d[
 test('incomplete rights shares suppress both','Managed MP3 Preview',d=>d['Writer Splits'][0]['Writer Ownership % (0-100)']='75%',false);
 test('buyer inquiry form mismatch suppresses both','Managed MP3 Preview',d=>d['Public Staging'][0]['Buyer Inquiry Form URL (No Public Email)']='https://tally.so/r/other',false);
 test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['One-Stop Authority Verification']='Pending Review',false);
+
+function checkSoulPocketReadOnlyPreflight(opts={}){
+  const code=fs.readFileSync(path.join(folder,'SyncOpps_Internal_MP3_Preflight.gs'),'utf8');
+  const tables={
+    Songs:[{'Song ID':'SONG-F385434E4A218F46868E','Tally Submission ID':'jej0M1Q',
+       'Member ID':'MEM-12216320AA80D27AD67C','Song Title':'Soul Pocket Groove',
+       'Artist Display Name':'MacMc','Music Source':'Managed MP3 Preview',
+       'Catalog Status':'Hidden','Preview Host Authorization (PRIVATE)':'Pending',
+       'Authorized Embed Reference':'','Stream URL':'','Preview Host Public ID (PRIVATE)':''}],
+    Members:[{'Member ID':'MEM-12216320AA80D27AD67C','Patreon Tier':'$10 Pro',
+       'Membership Status':'Active Paid'}],
+    'Beta 40':[{'Member ID':'MEM-12216320AA80D27AD67C','Invite Status':'Accepted'}],
+    'Tally Raw Responses':[{'Submission ID':'jej0M1Q'}]
+  };
+  if(opts.invalidMember)tables.Members[0]['Membership Status']='Unverified';
+  if(opts.invalidStatus)tables.Songs[0]['Catalog Status']='Published';
+  const ops=[];
+  const ctx=vm.createContext({
+    SYNC_OPPS_CONFIG:{spreadsheetId:'SYNTHETIC_PRIVATE_SHEET'},
+    SpreadsheetApp:{openById:()=>({})},
+    syncOppsPreviewTable_:(_,tab)=>({rows:tables[tab]}),
+    syncOppsPreviewC_:(row,key)=>String((row||{})[key]||'').trim(),
+    syncOppsPreviewEligibility_:()=>!opts.badBeta,
+    syncOppsPreviewBlob_:(_,sid,slot)=>{ops.push('read:'+sid+':'+slot);
+       if(opts.badMp3)throw Error('MP3 signature invalid');
+       return {getBytes:()=>Array(1024).fill(73)};},
+    syncOppsPreviewUsageGuard_:()=>{ops.push('checkQuota');
+       if(opts.badQuota)throw Error('Cloudinary quota unavailable');
+       return {creditsUsedPercent:1};},
+    Logger:{log:(txt)=>ops.push('log:'+txt)}
+  });
+  vm.runInContext(code,ctx);
+  let result,err;
+  try{result=vm.runInContext('syncOppsSoulPocketGroovePreflight()',ctx)}
+  catch(e){err=e}
+  return {result,err,ops};
+}
+{
+  const success=checkSoulPocketReadOnlyPreflight();
+  assert.equal(success.err,undefined);
+  assert.equal(success.result.submissionId,'jej0M1Q');
+  assert.equal(success.result.songId,'SONG-F385434E4A218F46868E');
+  assert.equal(success.result.privateMp3ReadAndSignatureVerified,true);
+  assert.equal(success.result.verifiedPaidBetaMember,true);
+  assert.equal(success.result.publicUploadAttempted,false);
+  assert.equal(success.result.spreadsheetWrites,0);
+  assert.equal(success.result.newTriggersCreated,0);
+  assert.equal(success.ops.filter(v=>v.startsWith('read:')).length,1);
+  assert.equal(success.ops.filter(v=>v==='checkQuota').length,1);
+  for(const altered of [{invalidMember:true},{invalidStatus:true},{badBeta:true},
+                        {badMp3:true},{badQuota:true}]){
+    const check=checkSoulPocketReadOnlyPreflight(altered);
+    assert.ok(check.err,'unsafe preflight inputs must fail closed');
+    assert.equal(check.ops.some(v=>/upload|publish|sendEmail|setValue/.test(v)),false);
+  }
+  console.log('SOUL POCKET PRIVATE PREFLIGHT: safe and fail-closed cases passed');
+}
 console.log('TOTAL '+count+' approved and fail-closed cases passed');
