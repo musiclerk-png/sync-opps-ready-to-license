@@ -27,16 +27,19 @@ const SO_PUBLIC_FEED_V1 = Object.freeze({
 });
 
 let SO_PUBLIC_FEED_READ_PATH_V12='none';
+let SO_PUBLIC_FEED_READ_ERROR_V12='none';
 function doGet(e) {
   // Never reveal errors or spreadsheet metadata over the public endpoint.
   const startedAt=Date.now();
   SO_PUBLIC_FEED_READ_PATH_V12='none';
+  SO_PUBLIC_FEED_READ_ERROR_V12='none';
   let data = {schemaVersion: 1, songs: []};
   try { data = soPublicSnapshotV1_(); }
   catch (err) { console.error('Public catalog feed unavailable: ' + String(err)); }
   // Opt-in, nonprivate timing probe. Normal visitor responses are unchanged.
   if(e && e.parameter && e.parameter.benchmark==='1')
-    data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt};
+    data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt,
+      fallbackReason:SO_PUBLIC_FEED_READ_ERROR_V12};
   const json = JSON.stringify(data)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
@@ -189,7 +192,14 @@ function soPublicTablesV12_(id) {
       method:'get',muteHttpExceptions:true,followRedirects:false,
       headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()}
     });
-    if(res.getResponseCode()!==200) throw Error('Batch read HTTP '+res.getResponseCode());
+    if(res.getResponseCode()!==200){
+      const status=res.getResponseCode();
+      const body=status===403?String(res.getContentText()).slice(0,2000):'';
+      const reason=status===403 && /SERVICE_DISABLED|not been used in project|is disabled/i.test(body)?'API_DISABLED':
+        status===403 && /ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes/i.test(body)?'OAUTH_SCOPE':
+        'HTTP_'+status;
+      throw Error('Batch read '+reason);
+    }
     const parsed=JSON.parse(res.getContentText());
     if(!parsed || !Array.isArray(parsed.valueRanges) ||
        parsed.valueRanges.length!==names.length) throw Error('Batch read incomplete');
@@ -207,6 +217,12 @@ function soPublicTablesV12_(id) {
     SO_PUBLIC_FEED_READ_PATH_V12='batch';
     return tables;
   }catch(err) {
+    const message=String(err && err.message || '');
+    SO_PUBLIC_FEED_READ_ERROR_V12=/^Batch read (API_DISABLED|OAUTH_SCOPE|HTTP_\\d{3})$/.test(message)?
+      message.slice('Batch read '.length):
+      /^Batch read (incomplete|invalid range|wrong tab)$/.test(message)?'INVALID_BATCH_RESPONSE':
+      /auth|permission|scope|oauth/i.test(message)?'AUTHORIZATION_REQUIRED':
+      /UrlFetchApp|ScriptApp|not defined/i.test(message)?'SERVICE_UNAVAILABLE':'OTHER';
     // Authorization, API enablement, quota and malformed response errors must
     // retain the old source-of-truth checks, never a stale catalog snapshot.
     console.warn('Batch read unavailable. Using seven current spreadsheet reads.');
