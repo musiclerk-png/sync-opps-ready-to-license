@@ -8,41 +8,6 @@
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com">
 <title>Find Music to License | Sync Opps. Ready to License</title>
-<!-- Start one fresh approved-feed request while the browser is still parsing the page.
-     The current feed-config.json remains authoritative. No static song data or cache. -->
-<script>
-'use strict';
-(function startLiveCatalogEarly(){
-  const ready=fetch('./feed-config.json',{cache:'no-store'}).then(async response=>{
-    if(!response.ok)throw Error('Feed configuration unavailable');
-    const cfg=await response.json();
-    if(cfg?.schemaVersion!==1 || cfg.mode!=='live' ||
-       !/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(cfg.endpoint||''))
-      throw Error('Invalid live feed configuration');
-    return new Promise((resolve,reject)=>{
-      const script=document.createElement('script');
-      let finished=false;
-      function done(error,data){
-        if(finished)return;
-        finished=true;
-        clearTimeout(timeout);
-        script.remove();
-        delete window.syncOppsApprovedFeedV1;
-        if(error)reject(error);else resolve(data);
-      }
-      const timeout=setTimeout(()=>done(Error('Public feed did not respond')),10000);
-      window.syncOppsApprovedFeedV1=data=>done(null,data);
-      script.onerror=()=>done(Error('Public feed request failed'));
-      script.src=cfg.endpoint+'?v='+Date.now();
-      script.referrerPolicy='no-referrer';
-      document.head.append(script);
-    });
-  });
-  window.__syncOppsInitialApprovedFeed=ready;
-  ready.catch(()=>{}); // Avoid an unhandled rejection until the catalog UI consumes it.
-})();
-</script>
-
 <style>
 :root { --ink:#181513; --muted:#6f6159; --burnt:#a83b06; --burnt2:#c44e0b; --peach:#f9dec9; --pale:#fff9f4; --paper:#fffefd; --line:#e9d9ca; --soft:#fbf1e8; --shadow:0 15px 40px rgba(87,44,19,.075); }
 * { box-sizing:border-box; } html { scroll-behavior:smooth; } body { margin:0; color:var(--ink); background:#fffaf5; font-family:Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif; line-height:1.46; } button,input,select{font:inherit;} button{cursor:pointer;} button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #fc9452;outline-offset:3px;} a { color:inherit;text-decoration:none;} .wrap{width:min(1180px,calc(100% - 48px));margin:auto;}
@@ -253,23 +218,14 @@ async function loadApprovedCatalog(){
   const previousApprovedSongs=JSON.stringify(SONGS);
   const previousFeedUnavailable=catalogFeedUnavailable;
   try{
-    // The first fresh approval request was started in the document head.
-    // Consume it once; every later refresh still rereads live config and feed.
-    let obj;
-    const early=typeof window!=='undefined' ? window.__syncOppsInitialApprovedFeed : null;
-    if(early){
-      delete window.__syncOppsInitialApprovedFeed;
-      obj=await early;
-    }else{
-      const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
-      if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
-      const cfg=await cfgResponse.json();
-      // A buyer must only see current server-approved records. Never use
-      // a static catalog, even if a remote config accidentally requests it.
-      if(cfg?.schemaVersion!==1 || cfg.mode!=='live')
-        throw Error('Invalid live feed configuration');
-      obj=await readLiveFeed(cfg.endpoint||'');
-    }
+    const cfgResponse=await fetch('./feed-config.json',{cache:'no-store'});
+    if(!cfgResponse.ok)throw Error('Feed configuration unavailable');
+    const cfg=await cfgResponse.json();
+    // A buyer must only see current server-approved records. Never use
+    // a static catalog, even if a remote config accidentally requests it.
+    if(cfg?.schemaVersion!==1 || cfg.mode!=='live')
+      throw Error('Invalid live feed configuration');
+    const obj=await readLiveFeed(cfg.endpoint||'');
     // A malformed response is an outage, not evidence of an empty catalog.
     if(!obj || obj.schemaVersion!==1 || !Array.isArray(obj.songs))
       throw Error('Invalid approved catalog feed response');
