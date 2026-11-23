@@ -51,15 +51,18 @@ function syncOppsPublicFeedDryRun() {
 function soPublicSnapshotV1_() {
   const id = PropertiesService.getScriptProperties().getProperty(SO_PUBLIC_FEED_V1.property);
   if (!id || !/^[A-Za-z0-9_-]{25,100}$/.test(id)) throw Error('Private spreadsheet setting is missing or invalid.');
-  const book=SpreadsheetApp.openById(id);
-  const staging=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.stagingTab);
-  const songs=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.songTab);
-  const members=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.memberTab);
-  // The beta is limited to the 40 accepted members, not all active paid patrons.
-  const beta40=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.betaTab);
-  const writerSplits=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.writerTab);
-  const publishingSplits=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.publishingTab);
-  const masterSplits=soPublicTableV1_(book,SO_PUBLIC_FEED_V1.masterTab);
+  // Read the seven current approval tables in one fresh formatted Sheets API request
+  // where the existing web app's scopes permit it. On API/authorization failure,
+  // immediately fall back to the ORIGINAL seven fresh SpreadsheetApp reads.
+  // Never use a cached public snapshot or skip a permission gate.
+  const tables=soPublicTablesV12_(id);
+  const staging=tables[SO_PUBLIC_FEED_V1.stagingTab];
+  const songs=tables[SO_PUBLIC_FEED_V1.songTab];
+  const members=tables[SO_PUBLIC_FEED_V1.memberTab];
+  const beta40=tables[SO_PUBLIC_FEED_V1.betaTab];
+  const writerSplits=tables[SO_PUBLIC_FEED_V1.writerTab];
+  const publishingSplits=tables[SO_PUBLIC_FEED_V1.publishingTab];
+  const masterSplits=tables[SO_PUBLIC_FEED_V1.masterTab];
   const stagingById=soPublicUniqueV1_(staging.rows,'Song ID');
   const sById=soPublicUniqueV1_(songs.rows,'Song ID');
   const mById=soPublicUniqueV1_(members.rows,'Member ID');
@@ -160,6 +163,69 @@ function soPublicSnapshotV1_() {
   return {schemaVersion:1,songs:out};
 }
 
+// v1.2 read optimization: seven fresh tab ranges in a single HTTP call.
+// FORMATTED_VALUE preserves the displayed strings required by approval rules.
+// An unavailable API never reuses previously approved, possibly withdrawn data.
+function soPublicTablesV12_(id) {
+  const names=[
+    SO_PUBLIC_FEED_V1.stagingTab,SO_PUBLIC_FEED_V1.songTab,
+    SO_PUBLIC_FEED_V1.memberTab,SO_PUBLIC_FEED_V1.betaTab,
+    SO_PUBLIC_FEED_V1.writerTab,SO_PUBLIC_FEED_V1.publishingTab,
+    SO_PUBLIC_FEED_V1.masterTab
+  ];
+  try {
+    const ranges=names.map(function(name) {
+      return '&ranges='+encodeURIComponent("'"+name.replace(/'/g,"''")+"'");
+    }).join('');
+    const url='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(id)+
+      '/values:batchGet?valueRenderOption=FORMATTED_VALUE&majorDimension=ROWS'+ranges;
+    const res=UrlFetchApp.fetch(url,{
+      method:'get',muteHttpExceptions:true,followRedirects:false,
+      headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()}
+    });
+    if(res.getResponseCode()!==200) throw Error('Batch read HTTP '+res.getResponseCode());
+    const parsed=JSON.parse(res.getContentText());
+    if(!parsed || !Array.isArray(parsed.valueRanges) ||
+       parsed.valueRanges.length!==names.length) throw Error('Batch read incomplete');
+    const tables=Object.create(null);
+    names.forEach(function(name,i) {
+      const valueRange=parsed.valueRanges[i];
+      if(!valueRange || !valueRange.range ||
+         (valueRange.majorDimension && valueRange.majorDimension!=='ROWS'))
+        throw Error('Batch read invalid range');
+      const returnedName=String(valueRange.range).split('!')[0]
+        .replace(/^'|'$/g,'').replace(/''/g,"'");
+      if(returnedName!==name) throw Error('Batch read wrong tab');
+      tables[name]=soPublicTableGridV12_(valueRange.values,name);
+    });
+    return tables;
+  }catch(err) {
+    // Authorization, API enablement, quota and malformed response errors must
+    // retain the old source-of-truth checks, never a stale catalog snapshot.
+    console.warn('Batch read unavailable. Using seven current spreadsheet reads.');
+    const book=SpreadsheetApp.openById(id);
+    const tables=Object.create(null);
+    names.forEach(function(name){tables[name]=soPublicTableV1_(book,name);});
+    return tables;
+  }
+}
+function soPublicTableGridV12_(grid,title) {
+  if(!Array.isArray(grid)||!grid.length||!Array.isArray(grid[0]))
+    throw Error('Required header missing: '+title);
+  const header=grid[0].map(function(x){return String(x).trim();});
+  const counts={};header.forEach(function(h){if(h)counts[h]=(counts[h]||0)+1;});
+  Object.keys(counts).forEach(function(h){
+    if(counts[h]>1)throw Error('Duplicate column header: '+title+' '+h);
+  });
+  const rows=grid.slice(1).filter(function(r){
+    if(!Array.isArray(r))throw Error('Malformed row: '+title);
+    return r.some(function(x){return String(x).trim();});
+  }).map(function(r){
+    const o={};header.forEach(function(h,i){if(h)o[h]=String(r[i]||'').trim();});
+    return o;
+  });
+  return {rows:rows};
+}
 function soPublicTableV1_(book,title) {
   const sheet=book.getSheetByName(title);
   if (!sheet) throw Error('Required sheet missing: '+title);
