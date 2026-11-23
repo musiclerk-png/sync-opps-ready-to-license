@@ -218,3 +218,63 @@ function syncOppsInternalCloudinaryVerifyPurge() {
   Logger.log(JSON.stringify(report));
   return report;
 }
+
+
+/**
+ * READ ONLY: member beta test song "Soul Pocket Groove".
+ * No public upload, rights status change, spreadsheet write, email or trigger.
+ * Temporary one-time private MP3 preflight prior to independent rights review.
+ */
+function syncOppsSoulPocketGroovePreflight() {
+  const submissionId='jej0M1Q';
+  const songId='SONG-F385434E4A218F46868E';
+  const memberId='MEM-12216320AA80D27AD67C';
+  const ss=SpreadsheetApp.openById(SYNC_OPPS_CONFIG.spreadsheetId);
+  const songs=syncOppsPreviewTable_(ss,'Songs');
+  const members=syncOppsPreviewTable_(ss,'Members');
+  const beta=syncOppsPreviewTable_(ss,'Beta 40');
+  const raw=syncOppsPreviewTable_(ss,'Tally Raw Responses');
+  const matching=songs.rows.filter(r=>
+    syncOppsPreviewC_(r,'Song ID')===songId &&
+    syncOppsPreviewC_(r,'Tally Submission ID')===submissionId &&
+    syncOppsPreviewC_(r,'Member ID')===memberId);
+  if(matching.length!==1)throw Error('Soul Pocket Groove must exist once under its verified beta member');
+  const song=matching[0];
+  if(syncOppsPreviewC_(song,'Song Title')!=='Soul Pocket Groove' ||
+     syncOppsPreviewC_(song,'Artist Display Name')!=='MacMc' ||
+     syncOppsPreviewC_(song,'Music Source')!=='Managed MP3 Preview' ||
+     syncOppsPreviewC_(song,'Catalog Status')!=='Hidden' ||
+     syncOppsPreviewC_(song,'Preview Host Authorization (PRIVATE)')!=='Pending' ||
+     syncOppsPreviewC_(song,'Authorized Embed Reference') ||
+     syncOppsPreviewC_(song,'Stream URL') ||
+     syncOppsPreviewC_(song,'Preview Host Public ID (PRIVATE)'))
+    throw Error('Song is not in its original private pre-approval, unhosted state');
+  const matchMember=members.rows.filter(r=>syncOppsPreviewC_(r,'Member ID')===memberId);
+  if(matchMember.length!==1 ||
+     syncOppsPreviewC_(matchMember[0],'Patreon Tier')!=='$10 Pro' ||
+     syncOppsPreviewC_(matchMember[0],'Membership Status')!=='Active Paid' ||
+     !syncOppsPreviewEligibility_(song,members,beta))
+    throw Error('Paid-member and beta authorization did not verify');
+  const media=syncOppsPreviewBlob_(raw,submissionId,1);
+  const bytes=media.getBytes().length;
+  const quota=syncOppsPreviewUsageGuard_();
+  const report={
+    mode:'SOUL POCKET GROOVE PRIVATE READ-ONLY PREFLIGHT',
+    submissionId:submissionId,
+    songId:songId,
+    privateMp3ReadAndSignatureVerified:true,
+    privateMp3Bytes:bytes,
+    verifiedPaidBetaMember:true,
+    hiddenAndUnhosted:true,
+    cloudinaryAuthenticatedAndUnder80Percent:true,
+    cloudinaryCreditsUsedPercent:quota.creditsUsedPercent,
+    ownerRightsReviewStillRequired:true,
+    publicUploadAttempted:false,
+    songsPublished:0,
+    spreadsheetWrites:0,
+    emailsSent:0,
+    newTriggersCreated:0
+  };
+  Logger.log(JSON.stringify(report));
+  return report;
+}
