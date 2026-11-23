@@ -65,6 +65,9 @@ check('No matching song results are differentiated',html.includes("No songs matc
 check('No unapproved sample playback fallback added',!html.includes("Golden Hour Drive")&&html.includes("}catch(e){ SONGS=[];"));
 
 const mediaFunctionSource=match[1].slice(match[1].indexOf('function insertPlayer('),match[1].indexOf('function reset()'));
+// Verify the MP3 branch hides the download option without removing playback controls.
+check('MP3 download UI suppression is limited to the browser-native player',mediaFunctionSource.includes("else if(p.type==='mp3'){const a=document.createElement('audio');a.controls=true;a.setAttribute('controlsList','nodownload');a.preload='none';"));
+check('MP3 download UI suppression does not remove pause or error feedback',mediaFunctionSource.includes("a.addEventListener('playing'")&&mediaFunctionSource.includes("a.addEventListener('error'")&&mediaFunctionSource.includes('a.src=p.url;area.append(a)'));
 check('Native managed MP3 player retains browser controls',mediaFunctionSource.includes("a.controls=true")&&mediaFunctionSource.includes("a.preload='none'"));
 check('Managed preview reports playing event',mediaFunctionSource.includes("a.addEventListener('playing'")&&mediaFunctionSource.includes('Preview is playing.'));
 check('Managed preview reports buffering event',mediaFunctionSource.includes("a.addEventListener('waiting'")&&mediaFunctionSource.includes('Preview is buffering.'));
