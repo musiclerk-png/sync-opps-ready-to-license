@@ -198,6 +198,7 @@ function syncOppsProcessBetaBuyer(e){
           to:candidate.email,
           subject:'You are accepted: Sync Opps. First 40 Catalog Beta',
           body:soBBAcceptanceEmail_(candidate),
+          htmlBody:soBBAcceptanceHtml_(candidate),
           name:'Sync Opps.',replyTo:SO_BB_V1.acceptanceSender
         });
         soBBSet_(acceptanceNotices,i,'Delivery Status','Sent');
@@ -572,14 +573,50 @@ function soBBAcceptanceEligible_(row,apps,emailIndex,members,betaSlots){
   return {email,memberId,slot,artist:displayName||'Artist'};
 }
 function soBBAcceptanceEmail_(member){
+  // Plain-text alternative for mail clients that do not display HTML.
   return 'Congratulations, '+member.artist+'!\n\n'+
-    'Your application for the Sync Opps. First 40 Ready to License Catalog Beta is approved.\n'+
-    'Your beta position is '+member.slot+' of 40.\n\n'+
-    'Submit your music here: '+SO_BB_V1.memberSongFormUrl+'\n\n'+
-    'Use your verified Patreon membership email and submit an authorized music link or MP3 preview (up to 10 MB), along with accurate songwriter, publishing and master ownership details. Every song is reviewed separately before public playback.\n\n'+
-    'Approved previews can be played by anyone in our public catalog. We will share the catalog with our existing licensing partners and promote it through paid advertising targeting music buyers.\n\n'+
-    'You retain your rights and 100% of licensing fees. Acceptance does not guarantee publication, buyer inquiries or licensing placements.\n\n'+
-    'Sync Opps.';
+    'Your application for the Sync Opps. First 40 Ready to License Catalog Beta has been approved.\n\n'+
+    'NEXT STEP: Submit your music\n'+SO_BB_V1.memberSongFormUrl+'\n\n'+
+    'Use your verified Patreon membership email. Include an authorized music link or MP3 preview (up to 10 MB) and accurate songwriter, publishing and master ownership details.\n\n'+
+    'Each song is reviewed before public playback. Approved music or previews can be played by anyone in our public catalog. We will share the catalog with our existing licensing partners and promote it through paid advertising targeting music buyers.\n\n'+
+    'You retain your rights and 100% of licensing fees. Participation does not guarantee publication, buyer inquiries or licensing placements.\n\n'+
+    'The Sync Opps. team';
+}
+function soBBAcceptanceHtmlEscape_(value){
+  // The applicant name originates in a public Tally form and is not trusted HTML.
+  return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function soBBAcceptanceHtml_(member){
+  const artist=soBBAcceptanceHtmlEscape_(member.artist);
+  const formUrl=soBBAcceptanceHtmlEscape_(SO_BB_V1.memberSongFormUrl);
+  return [
+    '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>',
+    '<body style="margin:0;padding:0;background-color:#f7f7f8;font-family:Arial,Helvetica,sans-serif;color:#20242a;">',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#f7f7f8;padding:28px 12px;"><tr><td align="center">',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#ffffff;border:1px solid #ece9e7;border-radius:12px;overflow:hidden;">',
+    '<tr><td style="height:6px;background:#ed8b63;font-size:0;line-height:0;">&nbsp;</td></tr>',
+    '<tr><td style="padding:29px 34px 10px;">',
+    '<p style="margin:0 0 20px;color:#c36d49;font-size:13px;font-weight:bold;letter-spacing:1.4px;">SYNC OPPS.</p>',
+    '<h1 style="margin:0 0 18px;color:#20242a;font-size:28px;line-height:1.25;font-weight:bold;">You&#39;re accepted!</h1>',
+    '<p style="margin:0 0 12px;font-size:16px;line-height:1.6;">Congratulations, '+artist+'!</p>',
+    '<p style="margin:0 0 23px;font-size:15px;line-height:1.7;color:#42464c;">Your application for the <strong>Sync Opps. First 40 Ready to License Catalog Beta</strong> has been approved.</p>',
+    '<p style="margin:0 0 8px;font-size:12px;line-height:1.4;color:#a15d42;font-weight:bold;letter-spacing:1px;">YOUR NEXT STEP</p>',
+    '<p style="margin:0 0 17px;font-size:16px;line-height:1.5;font-weight:bold;">Submit your music to the catalog</p>',
+    '<table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td bgcolor="#d97850" style="border-radius:7px;">',
+    '<a href="'+formUrl+'" style="display:inline-block;padding:14px 23px;border-radius:7px;background:#d97850;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;">Submit Your Music</a>',
+    '</td></tr></table>',
+    '<p style="margin:14px 0 0;font-size:13px;line-height:1.6;color:#62666d;">Use your verified Patreon email. Include an authorized streaming link or MP3 preview (up to 10 MB) and accurate songwriter, publishing and master ownership details.</p>',
+    '<hr style="border:0;border-top:1px solid #eae7e5;margin:28px 0 23px;">',
+    '<h2 style="margin:0 0 9px;font-size:17px;line-height:1.4;color:#20242a;">What happens next?</h2>',
+    '<p style="margin:0 0 15px;font-size:14px;line-height:1.75;color:#42464c;">Every submission is reviewed before public playback. Approved music or previews can be heard by anyone in our public catalog. We will share the catalog with our licensing partners and promote it through paid advertising targeting music buyers.</p>',
+    '<p style="margin:0 0 25px;font-size:14px;line-height:1.7;color:#42464c;">You keep your rights and 100% of licensing fees. Participation does not guarantee publication, buyer inquiries or licensing placements.</p>',
+    '<p style="margin:0;font-size:15px;line-height:1.7;font-weight:bold;">The Sync Opps. team</p>',
+    '</td></tr>',
+    '<tr><td style="padding:15px 34px 22px;background:#fcfaf9;border-top:1px solid #f1eded;">',
+    '<p style="margin:0;font-size:12px;line-height:1.6;color:#777b81;">Having trouble with the button? <a href="'+formUrl+'" style="color:#ad603f;text-decoration:underline;">Open the submission form</a>.</p>',
+    '</td></tr></table></td></tr></table></body></html>'
+  ].join('');
 }
 function soBBBuyerEmail_(r){
  return 'A potential music licensing buyer has submitted an inquiry through the Sync Opps. Ready to License Catalog.\n\n'+
