@@ -24,10 +24,11 @@ const definitions={
 'Writer Splits':[{'Song ID':sid,'Writer Credit':'Writer','Writer Legal Name':'Writer','Writer Ownership % (0-100)':'100%','Approved for Public Display':'Yes'}],
 'Publishing Splits':[{'Song ID':sid,'Publisher / Copyright Owner':'Publisher','Publishing Ownership % (0-100)':'100%','Approved for Public Display':'Yes'}],
 'Master Splits':[{'Song ID':sid,'Master Owner':'Master','Master Ownership % (0-100)':'100%','Approved for Public Display':'Yes'}],
-'Buyer Inquiries':[], 'Beta Applications (PRIVATE)':[]
+'Buyer Inquiries':[], 'Beta Applications (PRIVATE)':[], 'Beta Acceptance Notices (PRIVATE)':[]
 };
 const inquiryHeaders=['Inquiry ID','Received On','Song ID','Song Title','Member ID','Buyer Name','Company / Production','Buyer Email (PRIVATE)','Licensing Fee Offer (USD)','Music Use','Music Use Other','Media Type of Project','Media Type Other','Project / Campaign Name','Licensing Inquiry Message','Routing Contact Email (PRIVATE)','Delivery Status','Delivered On','Buyer Reply-To (PRIVATE)','Spam Review','Admin Notes (PRIVATE)'];
 const betaHeaders=['Tally Submission ID','Submitted On','Patreon Email (PRIVATE)','Artist / Band (Claimed)','Tier (Claimed)','Music Link (PRIVATE)','Questions (PRIVATE)','Member ID (Matched)','Paid Eligibility','Identity Verification','Admin Decision','Processing Status','Assigned Beta Slot','Last Reviewed On','Admin Notes (PRIVATE)'];
+const acceptanceHeaders=['Tally Submission ID','Member ID','Patreon Email (PRIVATE)','Beta Slot','Delivery Status','Attempted On','Sent On','Admin Notes (PRIVATE)'];
 function setup(overrides={}) {
  let sends=[],quota=10,writeCount=0;
  const db=structuredClone(definitions);
@@ -36,7 +37,16 @@ function setup(overrides={}) {
  if(overrides.noHostAuth)db.Songs[0]['Preview Host Authorization (PRIVATE)']='Pending';
  if(overrides.fakeHost)db.Songs[0]['Authorized Embed Reference']='https://evil.example/testcloud/video/upload/v123/'+asset+'.mp3';
  if(overrides.withdrawn)db.Songs[0]['Catalog Status']='Withdrawn';
- const headers={...Object.fromEntries(Object.entries(db).map(([name,arr])=>[name,arr.length?Object.keys(arr[0]):[]])), 'Buyer Inquiries':inquiryHeaders,'Beta Applications (PRIVATE)':betaHeaders};
+ if(overrides.acceptedApp){
+   db['Beta Applications (PRIVATE)'].push({
+     'Tally Submission ID':'SYNTHAPP001','Patreon Email (PRIVATE)':memberEmail,
+     'Artist / Band (Claimed)':'Synthetic Artist','Member ID (Matched)':mid,
+     'Paid Eligibility':'Active Paid','Identity Verification':'Verified',
+     'Admin Decision':overrides.notApproved?'Pending':'Approve',
+     'Processing Status':'Accepted','Assigned Beta Slot':overrides.wrongSlot?'40':'1'
+   });
+ }
+ const headers={...Object.fromEntries(Object.entries(db).map(([name,arr])=>[name,arr.length?Object.keys(arr[0]):[]])), 'Buyer Inquiries':inquiryHeaders,'Beta Applications (PRIVATE)':betaHeaders,'Beta Acceptance Notices (PRIVATE)':acceptanceHeaders};
  function table(name){
    const h=headers[name];let data=db[name].map(o=>h.map(k=>o[k]??''));
    return {getDataRange(){return {getValues(){return [h,...data.map(x=>x.slice())]}}},getLastRow(){return data.length+1},getRange(row,col,n=1,m=1){return{setValues(v){assert.equal(v.length,n);for(let i=0;i<n;i++){while(data.length<row-1+i)data.push(h.map(()=>''));for(let j=0;j<m;j++)data[row-2+i][col-1+j]=v[i][j]}writeCount++;return this},setValue(value){while(data.length<row-1)data.push(h.map(()=>''));data[row-2][col-1]=value;writeCount++;return this}}},export(){return data.map(r=>Object.fromEntries(h.map((key,i)=>[key,r[i]])))}};
@@ -51,7 +61,8 @@ function setup(overrides={}) {
  return {getResponseCode:()=>200,getContentText:()=>JSON.stringify(body)};
  }},
  LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},
- MailApp:{getRemainingDailyQuota:()=>quota,sendEmail:opts=>{if(overrides.failEmail)throw Error('Simulated SMTP failure');sends.push(opts)}},
+ Session:{getEffectiveUser:()=>({getEmail:()=>overrides.sender||'syncoppsofficial@gmail.com'})},
+ MailApp:{getRemainingDailyQuota:()=>quota,sendEmail:opts=>{if(overrides.failEmail||(overrides.failAcceptance&&opts.subject.includes('First 40')))throw Error('Simulated SMTP failure');sends.push(opts)}},
  };
  const c=vm.createContext(ctx);vm.runInContext(source,c,{filename:'buyer-intake.gs'});
  return {run:()=>vm.runInContext("syncOppsProcessBetaBuyer({triggerUid:'SYNTHETIC_TEST_ONLY'})",c),dry:()=>vm.runInContext('syncOppsBetaBuyerDryRun()',c),manual:()=>vm.runInContext('syncOppsProcessBetaBuyer()',c),sheets,send:()=>sends.slice(),writes:()=>writeCount};
@@ -66,4 +77,46 @@ test('unverified paid member blocked',()=>{const x=setup({unverifiedMember:true}
 test('pending Cloudinary approval blocked',()=>{const x=setup({noHostAuth:true});assert.equal(x.run().buyerBlocked,1);assert.equal(x.send().length,0)});
 test('lookalike Cloudinary path on wrong host blocked',()=>{const x=setup({fakeHost:true});assert.equal(x.run().buyerBlocked,1);assert.equal(x.send().length,0)});
 test('failed email persists failed, no automatic resend',()=>{const x=setup({failEmail:true});assert.equal(x.run().buyerBlocked,1);assert.equal(x.sheets['Buyer Inquiries'].export()[0]['Delivery Status'],'Failed');assert.equal(x.send().length,0);assert.equal(x.run().newBuyer,0)});
-console.log('TOTAL '+tested+' synthetic intake-routing and idempotency scenarios passed');
+test('accepted member receives exactly one branded email and same application is not resent',()=>{
+  const x=setup({acceptedApp:true}),r=x.run();
+  const acceptance=x.send().filter(e=>e.subject.includes('First 40'));
+  assert.equal(r.acceptanceSent,1);assert.equal(acceptance.length,1);
+  assert.equal(acceptance[0].to,memberEmail);
+  assert.equal(acceptance[0].replyTo,'syncoppsofficial@gmail.com');
+  assert.match(acceptance[0].body,/https:\/\/tally.so\/r\/peo0gV/);
+  assert.match(acceptance[0].body,/1 of 40/);
+  assert.match(acceptance[0].body,/public catalog/);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Sent');
+  x.run();
+  assert.equal(x.send().filter(e=>e.subject.includes('First 40')).length,1);
+});
+test('unapproved acceptance candidate is not emailed',()=>{
+  const x=setup({acceptedApp:true,notApproved:true});
+  assert.equal(x.run().acceptanceSent,0);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,0);
+});
+test('incorrect beta slot does not authorize acceptance email',()=>{
+  const x=setup({acceptedApp:true,wrongSlot:true});
+  assert.equal(x.run().acceptanceSent,0);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,0);
+});
+test('unverified paid membership blocks acceptance email',()=>{
+  const x=setup({acceptedApp:true,unverifiedMember:true});
+  assert.equal(x.run().acceptanceSent,0);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,0);
+});
+test('unauthorized trigger account blocks acceptance without consuming idempotency claim',()=>{
+  const x=setup({acceptedApp:true,sender:'musiclerk@gmail.com'});
+  assert.equal(x.run().acceptanceSent,0);
+  assert.equal(x.send().filter(e=>e.subject.includes('First 40')).length,0);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,0);
+});
+test('failed acceptance send creates durable no-retry record',()=>{
+  const x=setup({acceptedApp:true,failAcceptance:true});
+  assert.equal(x.run().acceptanceSent,0);
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export()[0]['Delivery Status'],'Failed');
+  x.run();
+  assert.equal(x.sheets['Beta Acceptance Notices (PRIVATE)'].export().length,1);
+  assert.equal(x.send().filter(e=>e.subject.includes('First 40')).length,0);
+});
+console.log('TOTAL '+tested+' synthetic buyer/acceptance routing and idempotency scenarios passed');
