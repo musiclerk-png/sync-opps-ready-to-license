@@ -54,7 +54,7 @@ function setup(overrides={}) {
  const sheets=Object.fromEntries(Object.keys(db).map(k=>[k,table(k)]));
  const nowDate=new Date().toISOString();
  const ctx={
- Date,console:{log(){}},PropertiesService:{getScriptProperties:()=>({getProperty:k=>k==='TALLY_API_KEY'?'TESTTOKEN123456789':'SHEET_ID_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'})},
+ Date,console:{log(){},warn(){}},PropertiesService:{getScriptProperties:()=>({getProperty:k=>k==='TALLY_API_KEY'?'TESTTOKEN123456789':'SHEET_ID_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'})},
  SpreadsheetApp:{openById:()=>({getSheetByName:n=>sheets[n]||null})},
  UrlFetchApp:{fetch:url=>{
  const buyer=url.includes('/jeoYaE/');const body=buyer?{submissions:[buyerSubmission],questions,hasMore:false}:{submissions:[],questions:[],hasMore:false};
