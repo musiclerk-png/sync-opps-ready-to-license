@@ -22,6 +22,65 @@ footer{background:#241a15;color:#e9d7ca;padding:27px 0;} .footerline{display:fle
 .modal-backdrop{position:fixed;inset:0;background:rgba(32,18,11,.67);z-index:80;display:grid;place-items:center;padding:18px;} .modal-backdrop[hidden]{display:none;} .modal{width:min(640px,100%);max-height:min(90vh,840px);overflow-y:auto;background:#fffefa;border-radius:20px;box-shadow:0 32px 80px #170b0490;border:1px solid #eed5c6;} .modal-top{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:22px 24px;border-bottom:1px solid #efdfd4;background:#fff7ef;} .modal-top h2{font-size:24px;margin:0 0 4px;} .modal-top p{margin:0;color:#7b6354;font-size:12px;} .x{width:36px;height:36px;border:1px solid #e2cbbd;background:white;border-radius:50%;font-size:23px;line-height:1;color:#75482f;} .modal-main{padding:22px 24px 26px;} .modal-main h4{margin:21px 0 10px;font-size:13px;text-transform:uppercase;color:#9b451d;letter-spacing:.055em;} .modal-main h4:first-child{margin-top:0;} .pair{display:flex;align-items:start;gap:20px;justify-content:space-between;border-bottom:1px solid #f1e4da;padding:9px 0;font-size:13px;} .pair span:first-child{color:#725e53;} .pair strong{text-align:right;max-width:66%;font-weight:740;} .disclaimer{background:#fff1e5;padding:12px;border-radius:10px;border-left:3px solid #bd5e24;font-size:12px;color:#714a31;line-height:1.5;margin:17px 0;} .modal-main p{font-size:14px;line-height:1.62;color:#61514a;} .inquiry{background:#f9f0e8;border-radius:12px;padding:16px;white-space:pre-wrap;font:12px/1.6 system-ui,Arial,sans-serif;color:#524137;border:1px solid #efdfd0;} .modal-cta{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px;} .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:120;background:#2d1b12;color:white;padding:12px 20px;border-radius:99px;box-shadow:0 12px 30px #0004;font-size:13px;max-width:90vw;text-align:center;} .toast[hidden]{display:none;}
 @media(max-width:1100px){.toolrow{grid-template-columns:1.5fr repeat(2,1fr);} .grid{grid-template-columns:repeat(2,minmax(0,1fr));} .tagline{display:none;} nav{gap:13px;}} @media(max-width:750px){.wrap{width:min(100% - 30px,600px)}.nav{min-height:68px;gap:14px;}.brandname{font-size:21px;} .logo{height:43px;width:43px;font-size:28px;}nav{display:none;} .menu-button{display:inline-block;} .nav>.btn{font-size:11px;min-height:38px;padding:8px 11px;}.hero-inner{grid-template-columns:1fr;gap:18px;text-align:left;padding:33px 0 43px;}.hero-mark{height:100px;width:100px;font-size:71px;border-width:5px;} .hero p{font-size:14px}.hero-actions .btn{flex:1;padding:10px 13px;font-size:12px;}.launch-inner{justify-content:start;gap:7px;padding:12px 0;font-size:12px;flex-direction:column;}.sep{display:none;}.catalog{padding:34px 0 50px}.sectionhead{align-items:start;flex-direction:column;gap:11px}.toolrow{grid-template-columns:1fr 1fr;}.field:first-child{grid-column:1/-1}.grid{grid-template-columns:1fr;}.tags{min-height:0}.steps{grid-template-columns:1fr;gap:20px;}.artist-panel{grid-template-columns:1fr;padding:25px;gap:19px;}.footerline{align-items:start;flex-direction:column;}.modal-top,.modal-main{padding:19px;}} @media(max-width:420px){.nav>.btn{display:none}.toolrow{grid-template-columns:1fr}.field:first-child{grid-column:auto}}
 @media(max-width:750px){#mainNav.is-open{display:flex;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fffdfa;border-bottom:1px solid var(--line);box-shadow:0 14px 24px rgba(87,44,19,.13);padding:7px 20px 15px;}#mainNav.is-open a{padding:13px 5px;border-bottom:1px solid #f1e5da;}}
+
+/* Approved Ready to License card redesign: a single stable MP3 player. */
+.song-card{border-color:#eed1bd;border-radius:20px;padding:22px 22px 20px;background:var(--paper);box-shadow:0 18px 44px rgba(98,48,18,.06);}
+.song-card:hover{box-shadow:0 20px 38px rgba(98,48,18,.12);}
+.card-head{gap:15px;}
+.art{width:76px;height:76px;border-radius:15px;box-shadow:inset 0 -14px 24px rgba(73,26,17,.12);}
+.trackmeta h3{font-size:clamp(18px,2vw,22px);line-height:1.23;letter-spacing:-.045em;white-space:normal;overflow:visible;overflow-wrap:anywhere;}
+.song-card .artist{font-size:13px;margin-top:4px;}
+.song-card .genre{margin-top:5px;font-size:11px;color:#956e59;}
+.song-card .provider{margin-top:21px;margin-bottom:9px;}
+.song-card .source-pill{color:#87471f;background:transparent;text-transform:uppercase;letter-spacing:.07em;font-size:10px;padding:0;border-radius:0;}
+.song-card .provider-note{color:#986b54;font-size:11px;}
+.song-card .tags{margin:21px 0 17px;min-height:0;gap:10px;}
+.song-card .tagline-row{gap:7px;align-items:center;}
+.song-card .tag-title{font-size:12px;min-width:65px;line-height:22px;}
+.song-card .tag{background:#fae9dd;color:#75462b;padding:5px 9px;line-height:1.2;font-size:11px;}
+.song-card .tag.extra-use{background:#fae9dd;}
+.song-card .tag[hidden]{display:none!important;}
+.song-card .more-uses{padding:4px 9px;border:1px solid #e8c9b5;border-radius:99px;background:transparent;color:#9b491e;font-weight:700;font-size:11px;line-height:1.35;}
+.song-card .more-uses:hover{background:#fdf0e7;}
+.song-card .actions{gap:9px;margin-top:auto;}
+.song-card .actions .btn{border-radius:99px;min-height:45px;font-size:12px;}
+.song-card .card-foot{margin-top:13px;color:#987b68;font-size:11px;line-height:1.5;}
+.song-card .listen-area{margin:10px 0 0;border-radius:14px;border-color:#efd7c6;background:#fff9f4;}
+.song-card .managed-player{display:flex;gap:12px;align-items:center;min-height:78px;border:1px solid #efd7c6;background:linear-gradient(180deg,#fff9f4,#fff4ec);border-radius:14px;padding:13px;margin:0;transition:border-color .2s,box-shadow .2s;}
+.song-card .managed-player.is-playing{border-color:#dca480;box-shadow:0 0 0 3px rgba(204,107,45,.075);}
+.song-card .managed-play{height:44px;width:44px;flex:0 0 44px;display:grid;place-items:center;border:0;border-radius:50%;background:linear-gradient(130deg,#a43804,#c24c08);color:#fff;box-shadow:0 3px 9px #a83b061b;padding:0;}
+.song-card .managed-play:hover{background:#8e2e02;}
+.song-card .managed-play svg{height:19px;width:19px;fill:currentColor;}
+.song-card .managed-play .pause-icon{display:none;}
+.song-card .managed-player.is-playing .managed-play .play-icon{display:none;}
+.song-card .managed-player.is-playing .managed-play .pause-icon{display:block;}
+.song-card .managed-playback{flex:1;min-width:0;}
+.song-card .managed-playback-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+.song-card .managed-state{font-size:11px;font-weight:780;color:#623923;}
+.song-card .managed-player.is-playing .managed-state{color:#b13d08;}
+.song-card .managed-time{color:#886957;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;}
+.song-card .managed-timeline{display:block;width:100%;margin:0;height:13px;cursor:pointer;appearance:none;-webkit-appearance:none;background:transparent;accent-color:var(--burnt);}
+.song-card .managed-timeline::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:linear-gradient(to right,#aa3b06 0%,#aa3b06 var(--progress,0%),#e6ccbc var(--progress,0%),#e6ccbc 100%);}
+.song-card .managed-timeline::-moz-range-track{height:5px;background:#e6ccbc;border-radius:99px;}
+.song-card .managed-timeline::-moz-range-progress{height:5px;background:var(--burnt);}
+.song-card .managed-timeline::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-3.5px;background:#a83b06;border:2px solid white;border-radius:50%;box-shadow:0 1px 3px #74442d30;}
+.song-card .managed-timeline::-moz-range-thumb{width:9px;height:9px;background:#a83b06;border:2px solid white;border-radius:50%;}
+.song-card .managed-mute{border:0;background:transparent;color:#956c57;padding:8px 1px 8px 5px;display:grid;place-items:center;}
+.song-card .managed-mute svg{width:18px;height:18px;}
+.song-card .managed-mute:hover{color:var(--burnt);}
+.song-card .managed-mute[aria-pressed="true"]{opacity:.45;}
+.song-card .managed-player audio{display:none!important;}
+@media(max-width:480px){
+ .song-card{border-radius:18px;padding:19px 15px;}
+ .song-card .art{width:67px;height:67px;border-radius:13px;}
+ .song-card .trackmeta h3{font-size:20px;}
+ .song-card .managed-player{padding:11px;gap:10px;}
+ .song-card .tag-title{min-width:60px;}
+ .song-card .tag{font-size:10.5px;padding:5px 8px;}
+ .song-card .actions .btn{font-size:11px;min-height:44px;}
+}
+@media(prefers-reduced-motion:reduce){.song-card,.song-card .managed-player{transition:none;}}
+
 </style>
 </head>
 <body>
@@ -200,10 +259,20 @@ function populateFilters(){
   for(const id of ids){if([...$(id).options].some(o=>o.value===selected[id]))$(id).value=selected[id];}
 }
 function currentMatches(){const q=$('searchInput').value.toLowerCase().trim(),g=$('genreInput').value,m=$('moodInput').value,u=$('useInput').value;return SONGS.filter(x=>(!g||x.genre===g)&&(!m||x.moods.includes(m))&&(!u||x.uses.includes(u))&&(!q||[x.title,x.artist,x.genre,x.source,x.notes,...x.moods,...x.uses].join(' ').toLowerCase().includes(q)));}
-function cardHtml(s){return `<article class="song-card" aria-label="${escapeHtml(s.title)} by ${escapeHtml(s.artist)}"><div class="card-head"><div class="art ${escapeHtml(s.art)}"><span class="art-symbol" aria-hidden="true">♫</span></div><div class="trackmeta"><h3 title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3><p class="artist">by ${escapeHtml(s.artist)}</p><p class="genre">${escapeHtml(s.genre)} · ${escapeHtml(s.duration)}</p></div></div><div class="provider"><span class="source-pill">◉ ${escapeHtml(s.source)}</span><span class="provider-note">Original music</span></div><div class="listen-area"><div class="listen-row"><button class="play-btn" data-play="${escapeHtml(s.id)}" aria-label="${activeId===s.id?'Close':'Open'} ${escapeHtml(s.source)} player for ${escapeHtml(s.title)}" aria-expanded="${activeId===s.id}">${activeId===s.id?'×':'▶'}</button><div class="wave" aria-hidden="true"></div><span class="listen-label">${activeId===s.id?'Close player':'Listen here'}</span></div>${activeId===s.id?`<div class="embed-holder" id="playerMount"></div>`:''}</div><div class="tags"><div class="tagline-row"><span class="tag-title">Mood:</span>${s.moods.map(tag).join('')}</div><div class="tagline-row"><span class="tag-title">Great For:</span>${s.uses.map(tag).join('')}</div></div><div class="actions"><button class="btn btn-primary" data-info="${escapeHtml(s.id)}">Licensing Info</button><a class="btn btn-outline" href="${escapeHtml(s.buyerInquiryUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Contact the licensing representative for ${escapeHtml(s.title)}">Contact Artist</a></div><div class="card-foot">Rights details are member supplied; confirm all permissions with the relevant rights holders.</div></article>`;}
+function cardHtml(s){
+ const managed=s.player.type==='mp3';
+ const visibleUses=s.uses.slice(0,3).map(tag).join('');
+ const additionalUses=s.uses.slice(3).map(x=>`<span class="tag extra-use" data-extra-use hidden>${escapeHtml(x)}</span>`).join('');
+ const moreUses=s.uses.length>3?`<button class="more-uses" type="button" data-more-uses aria-expanded="false" aria-label="Show ${s.uses.length-3} more suggested uses">+${s.uses.length-3} more</button>`:'';
+ const preview=managed
+ ? `<div class="managed-player" role="group" aria-label="Audio preview for ${escapeHtml(s.title)}"><button type="button" class="managed-play" data-mp3-play aria-label="Play ${escapeHtml(s.title)}" title="Play or pause"><svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg></button><div class="managed-playback"><div class="managed-playback-top"><span class="managed-state" role="status" aria-live="polite">Ready to listen</span><span class="managed-time"><span data-elapsed>0:00</span> / <span data-duration>${escapeHtml(s.duration||'0:00')}</span></span></div><input class="managed-timeline" data-mp3-seek type="range" min="0" max="${Math.max(1,Number((s.duration||'0:00').split(':')[0])*60+Number((s.duration||'0:00').split(':')[1])||60)}" value="0" step="0.1" aria-label="Seek through ${escapeHtml(s.title)}"></div><button type="button" class="managed-mute" data-mp3-mute aria-label="Mute preview" aria-pressed="false" title="Mute or unmute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8a5 5 0 0 1 0 8M18 5a9 9 0 0 1 0 14"/></svg></button><audio data-managed-audio preload="none" controlsList="nodownload" playsinline src="${escapeHtml(s.player.url)}"></audio></div>`
+ : `<div class="listen-area"><div class="listen-row"><button class="play-btn" data-play="${escapeHtml(s.id)}" aria-label="${activeId===s.id?'Close':'Open'} ${escapeHtml(s.source)} player for ${escapeHtml(s.title)}" aria-expanded="${activeId===s.id}">${activeId===s.id?'×':'▶'}</button><div class="wave" aria-hidden="true"></div><span class="listen-label">${activeId===s.id?'Close player':'Listen here'}</span></div>${activeId===s.id?`<div class="embed-holder" id="playerMount"></div>`:''}</div>`;
+ return `<article class="song-card" data-song-id="${escapeHtml(s.id)}" aria-label="${escapeHtml(s.title)} by ${escapeHtml(s.artist)}"><div class="card-head"><div class="art ${escapeHtml(s.art)}"><span class="art-symbol" aria-hidden="true">♫</span></div><div class="trackmeta"><h3 title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</h3><p class="artist">by ${escapeHtml(s.artist)}</p><p class="genre">${escapeHtml(s.genre)} · ${escapeHtml(s.duration)}</p></div></div><div class="provider"><span class="source-pill">${managed?'LISTENING PREVIEW':'◉ '+escapeHtml(s.source)}</span><span class="provider-note">Original music</span></div>${preview}<div class="tags"><div class="tagline-row"><span class="tag-title">Mood</span>${s.moods.map(tag).join('')}</div><div class="tagline-row"><span class="tag-title">Great for</span>${visibleUses}${additionalUses}${moreUses}</div></div><div class="actions"><button type="button" class="btn btn-primary" data-info="${escapeHtml(s.id)}">Licensing Info</button><a class="btn btn-outline" href="${escapeHtml(s.buyerInquiryUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Contact the licensing representative for ${escapeHtml(s.title)}">Contact Artist</a></div><div class="card-foot">Rights details are member supplied; confirm all permissions with the relevant rights holders.</div></article>`;
+}
 function render(){
  const arr=currentMatches();
  $('songGrid').innerHTML=arr.map(cardHtml).join('');
+ initManagedPlayers();
  $('resultCount').textContent=`${arr.length} of ${SONGS.length} songs`;
  $('emptyState').hidden=arr.length!==0;
  const filtersActive=['searchInput','genreInput','moodInput','useInput'].some(id=>Boolean($(id).value));
@@ -220,6 +289,51 @@ function render(){
  $('emptyReset').hidden=arr.length!==0 || !filtersActive || catalogFeedUnavailable;
  $('emptyRetry').hidden=arr.length!==0 || !catalogFeedUnavailable;
  if(activeId && arr.some(x=>x.id===activeId)){const song=arr.find(x=>x.id===activeId);insertPlayer(song);}else activeId=null;
+}
+function initManagedPlayers(){
+ document.querySelectorAll('.song-card').forEach(card=>{
+  const audio=card.querySelector('audio[data-managed-audio]');if(!audio)return;
+  const play=card.querySelector('[data-mp3-play]'),timeline=card.querySelector('[data-mp3-seek]'),
+        state=card.querySelector('.managed-state'),elapsed=card.querySelector('[data-elapsed]'),
+        duration=card.querySelector('[data-duration]'),mute=card.querySelector('[data-mp3-mute]');
+  const fmt=n=>{const v=Number.isFinite(n)?Math.max(0,Math.floor(n)):0;return Math.floor(v/60)+':'+String(v%60).padStart(2,'0');};
+  const fallback=Number(timeline.max)||60;
+  const updateProgress=()=>{
+   const max=Number.isFinite(audio.duration)&&audio.duration>0?audio.duration:fallback;
+   timeline.max=String(max);
+   if(document.activeElement!==timeline)timeline.value=String(audio.currentTime||0);
+   timeline.style.setProperty('--progress',Math.min(100,Number(timeline.value)/max*100)+'%');
+   elapsed.textContent=fmt(audio.currentTime);
+   duration.textContent=fmt(max);
+  };
+  const updateState=()=>{
+   const playing=!audio.paused&&!audio.ended;
+   card.querySelector('.managed-player').classList.toggle('is-playing',playing);
+   state.textContent=playing?'Now playing':audio.ended?'Finished':audio.currentTime?'Paused':'Ready to listen';
+   play.setAttribute('aria-label',(playing?'Pause ':'Play ')+card.querySelector('.trackmeta h3').textContent);
+  };
+  play.addEventListener('click',()=>{
+   if(!audio.paused){audio.pause();return;}
+   state.textContent='Loading preview…';
+   try{const pending=audio.play();if(pending&&typeof pending.catch==='function')pending.catch(()=>{updateState();state.textContent='Unable to play preview';});}
+   catch(e){updateState();state.textContent='Unable to play preview';}
+  });
+  audio.addEventListener('play',()=>{
+   document.querySelectorAll('audio[data-managed-audio]').forEach(other=>{if(other!==audio&&!other.paused)other.pause();});
+   updateState();
+  });
+  audio.addEventListener('pause',updateState);
+  audio.addEventListener('ended',()=>{updateState();updateProgress();});
+  audio.addEventListener('loadedmetadata',updateProgress);
+  audio.addEventListener('durationchange',updateProgress);
+  audio.addEventListener('timeupdate',updateProgress);
+  audio.addEventListener('waiting',()=>{state.textContent='Buffering…';});
+  audio.addEventListener('error',()=>{updateState();state.textContent='Preview unavailable';});
+  timeline.addEventListener('input',()=>{timeline.style.setProperty('--progress',Math.min(100,Number(timeline.value)/Number(timeline.max||fallback)*100)+'%');elapsed.textContent=fmt(Number(timeline.value));});
+  timeline.addEventListener('change',()=>{if(audio.readyState>=1&&Number.isFinite(Number(timeline.value)))audio.currentTime=Number(timeline.value);});
+  mute.addEventListener('click',()=>{audio.muted=!audio.muted;mute.setAttribute('aria-pressed',String(audio.muted));mute.setAttribute('aria-label',audio.muted?'Unmute preview':'Mute preview');});
+  updateProgress();
+ });
 }
 function playerIframe(url,height,opts=''){const f=document.createElement('iframe');f.src=url;f.title='Music preview player';f.height=height;f.width='100%';f.loading='eager';f.referrerPolicy='strict-origin-when-cross-origin';f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;return f;}
 function insertPlayer(song){const area=$('playerMount');if(!area)return;area.replaceChildren();const p= song.player;const status=document.createElement('div');status.className='sample-audio-note';status.setAttribute('role','status');status.textContent='Provider playback features and full-track access may vary.';if(p.type==='soundcloud'){const u=new URL('https://w.soundcloud.com/player/');u.searchParams.set('url',p.url);u.searchParams.set('color','#a83b06');u.searchParams.set('show_artwork','false');u.searchParams.set('hide_related','true');u.searchParams.set('show_comments','false');area.append(playerIframe(u.toString(),'112'));}
@@ -246,7 +360,7 @@ function contact(s){
 }
 function closeModal(){$('modalLayer').hidden=true;document.body.style.overflow='';if(restoreFocus&&document.contains(restoreFocus))restoreFocus.focus();}
 function toast(msg){$('toast').textContent=msg;$('toast').hidden=false;clearTimeout(window.__toastTimer);window.__toastTimer=setTimeout(()=>$('toast').hidden=true,2300);}
-$('songGrid').addEventListener('click',e=>{let t=e.target.closest('[data-play],[data-info],[data-contact]');if(!t)return;const s=SONGS.find(x=>x.id===(t.dataset.play||t.dataset.info||t.dataset.contact));if(!s)return;if(t.hasAttribute('data-play')){activeId=activeId===s.id?null:s.id;render();}else if(t.hasAttribute('data-info'))info(s);else contact(s);});
+$('songGrid').addEventListener('click',e=>{const more=e.target.closest('[data-more-uses]');if(more){const card=more.closest('.song-card');const expand=more.getAttribute('aria-expanded')!=='true';card.querySelectorAll('[data-extra-use]').forEach(el=>{el.hidden=!expand;});more.setAttribute('aria-expanded',String(expand));more.textContent=expand?'Show less':'+'+card.querySelectorAll('[data-extra-use]').length+' more';return;}let t=e.target.closest('[data-play],[data-info],[data-contact]');if(!t)return;const s=SONGS.find(x=>x.id===(t.dataset.play||t.dataset.info||t.dataset.contact));if(!s)return;if(t.hasAttribute('data-play')){activeId=activeId===s.id?null:s.id;render();}else if(t.hasAttribute('data-info'))info(s);else contact(s);});
 $('modalContent').addEventListener('click',async e=>{const c=e.target.closest('[data-copy]'),t=e.target.closest('[data-modal-contact]');if(t){const s=SONGS.find(x=>x.id===t.dataset.modalContact);if(s)contact(s);}else if(c){const s=SONGS.find(x=>x.id===c.dataset.copy);if(s){try{await navigator.clipboard.writeText(inquiryText(s));toast('Inquiry template copied.');}catch{toast('Copy unavailable in this browser. Select the template text manually.');}}}else if(e.target.id==='modalDone')closeModal();});
 $('modalClose').addEventListener('click',closeModal);$('modalLayer').addEventListener('click',e=>{if(e.target.id==='modalLayer')closeModal();});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modalLayer').hidden)closeModal();});
 for(const id of ['searchInput','genreInput','moodInput','useInput'])$(id).addEventListener(id==='searchInput'?'input':'change',()=>{activeId=null;render();});$('resetFilters').addEventListener('click',reset);$('emptyReset').addEventListener('click',reset);$('emptyRetry').addEventListener('click',loadApprovedCatalog);
