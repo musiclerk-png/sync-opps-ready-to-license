@@ -26,11 +26,17 @@ const SO_PUBLIC_FEED_V1 = Object.freeze({
   version: 1
 });
 
+let SO_PUBLIC_FEED_READ_PATH_V12='none';
 function doGet(e) {
   // Never reveal errors or spreadsheet metadata over the public endpoint.
+  const startedAt=Date.now();
+  SO_PUBLIC_FEED_READ_PATH_V12='none';
   let data = {schemaVersion: 1, songs: []};
   try { data = soPublicSnapshotV1_(); }
   catch (err) { console.error('Public catalog feed unavailable: ' + String(err)); }
+  // Opt-in, nonprivate timing probe. Normal visitor responses are unchanged.
+  if(e && e.parameter && e.parameter.benchmark==='1')
+    data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt};
   const json = JSON.stringify(data)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
@@ -198,6 +204,7 @@ function soPublicTablesV12_(id) {
       if(returnedName!==name) throw Error('Batch read wrong tab');
       tables[name]=soPublicTableGridV12_(valueRange.values,name);
     });
+    SO_PUBLIC_FEED_READ_PATH_V12='batch';
     return tables;
   }catch(err) {
     // Authorization, API enablement, quota and malformed response errors must
@@ -206,6 +213,7 @@ function soPublicTablesV12_(id) {
     const book=SpreadsheetApp.openById(id);
     const tables=Object.create(null);
     names.forEach(function(name){tables[name]=soPublicTableV1_(book,name);});
+    SO_PUBLIC_FEED_READ_PATH_V12='legacy';
     return tables;
   }
 }
