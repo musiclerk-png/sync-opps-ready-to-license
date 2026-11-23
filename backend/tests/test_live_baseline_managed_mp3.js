@@ -59,6 +59,63 @@ test('incomplete rights shares suppress both','Managed MP3 Preview',d=>d['Writer
 test('buyer inquiry form mismatch suppresses both','Managed MP3 Preview',d=>d['Public Staging'][0]['Buyer Inquiry Form URL (No Public Email)']='https://tally.so/r/other',false);
 test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['One-Stop Authority Verification']='Pending Review',false);
 
+// BatchGet synthetic parity and fail-closed tests. No production spreadsheet access.
+{
+ db=structuredClone(fixture());
+ const baseline=JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx)));
+ const names=['Public Staging','Songs','Members','Beta 40','Writer Splits','Publishing Splits','Master Splits'];
+ let requests=0;
+ pctx.ScriptApp={getOAuthToken:()=> 'synthetic-token-no-real-scopes'};
+ const formattedResponse=(overrideNames=names)=>({
+   valueRanges:overrideNames.map(name=>({
+     range:"'"+name+"'!A1:ZZ100",
+     majorDimension:'ROWS',
+     values:[Object.keys(db[name][0]),...db[name].map(row=>Object.values(row))]
+   }))
+ });
+ pctx.UrlFetchApp={fetch:(url,opts)=>{
+   requests++;
+   assert.equal(new URL(url).hostname,'sheets.googleapis.com');
+   assert.equal(new URL(url).pathname,'/v4/spreadsheets/TEST_SHEET_ID_STRING_LONG_ENOUGH_TO_PASS/values:batchGet');
+   assert.equal(new URL(url).searchParams.get('valueRenderOption'),'FORMATTED_VALUE');
+   assert.equal(new URL(url).searchParams.get('majorDimension'),'ROWS');
+   assert.deepEqual(new URL(url).searchParams.getAll('ranges'),names.map(n=>"'"+n+"'"));
+   assert.equal(opts.headers.Authorization,'Bearer synthetic-token-no-real-scopes');
+   assert.equal(opts.followRedirects,false);
+   return {getResponseCode:()=>200,getContentText:()=>JSON.stringify(formattedResponse())};
+ }};
+ const batched=JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx)));
+ assert.deepEqual(batched,baseline,'Batch read must match legacy public payload including ownership and buyer routing');
+ assert.equal(requests,1,'One API read must replace seven individual reads');
+ console.log('PASS approved catalog batchGet parity and single-request behavior');
+ db.Songs[0]['Catalog Status']='Withdrawn';
+ assert.equal(vm.runInContext('soPublicSnapshotV1_()',pctx).songs.length,0,'No cached withdrawn song in batchGet');
+ db=structuredClone(fixture());
+ db['Master Splits'][0]['Approved for Public Display']='No';
+ assert.equal(vm.runInContext('soPublicSnapshotV1_()',pctx).songs.length,0,'BatchGet cannot bypass master consent');
+ db=structuredClone(fixture());
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>403,getContentText:()=>''});
+ const denied=JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx)));
+ assert.deepEqual(denied,baseline,'Scope/enablement error must fallback to full fresh legacy checks');
+ db.Songs[0]['Catalog Status']='Withdrawn';
+ assert.equal(vm.runInContext('soPublicSnapshotV1_()',pctx).songs.length,0,'Denied API fallback cannot return withdrawn song');
+ db=structuredClone(fixture());
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify({valueRanges:[{range:"'Songs'!A1",values:[]} ]})});
+ assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx))),baseline,
+   'Malformed incomplete API response must use existing live reader instead');
+ db=structuredClone(fixture());
+ pctx.UrlFetchApp.fetch=()=>({getResponseCode:()=>200,getContentText:()=>JSON.stringify(formattedResponse(names.slice().reverse()))});
+ assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx))),baseline,
+   'Misordered API range data must be rejected and freshly re-read');
+ db=structuredClone(fixture());
+ pctx.UrlFetchApp.fetch=()=>{throw Error('synthetic remote network failure');};
+ assert.deepEqual(JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx))),baseline,
+   'Network failure must use fresh eligible data, not a stored snapshot');
+ delete pctx.ScriptApp;
+ delete pctx.UrlFetchApp;
+ console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
+}
+
 function checkSoulPocketReadOnlyPreflight(opts={}){
   const code=fs.readFileSync(path.join(folder,'SyncOpps_Internal_MP3_Preflight.gs'),'utf8');
   const tables={
