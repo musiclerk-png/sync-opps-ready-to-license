@@ -23,6 +23,8 @@ check('Beta 40 promotion FAQ accurately includes existing partners and monthly b
 check('Beta 40 submission FAQ distinguishes two songs during beta from January 2027 launch plan',betaHtml.includes('Can I submit multiple songs at once?')&&betaHtml.includes('Submit up to two songs together during beta.')&&betaHtml.includes('January 2027'));
 check('Beta 40 streaming-link submission FAQ makes MP3 upload optional',betaHtml.includes('Do I need to upload music files?')&&betaHtml.includes('song details, metadata and ownership information for each track. Uploading an MP3 is optional.'));
 check('Exactly four newly highlighted Beta FAQs without replacing existing ones',(betaHtml.match(/class="faq faq-highlight"/g)||[]).length===4&&betaHtml.includes('Do I need to pay anything beyond Patreon?')&&betaHtml.includes('What music services can I submit?'));
+check('Unwanted private master recording FAQ is absent',!betaHtml.includes('Must I make my private master recording public?')&&!betaHtml.includes('If an existing private track cannot be embedded'));
+
 
 
 check('Initial catalog state does not misleadingly display zero songs before live approval',html.includes('id="resultCount">Loading music...')&&html.includes('<strong id="emptyTitle">Loading approved music...</strong>')&&html.includes('id="emptyState" role="status" aria-live="polite"><strong'));
