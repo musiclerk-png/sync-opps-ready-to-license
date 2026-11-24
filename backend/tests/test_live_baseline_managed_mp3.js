@@ -181,6 +181,15 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
  assert.equal(directProbe.readDiagnostics.path,'legacy');
  assert.equal(directProbe.readDiagnostics.fallbackReason,'BATCH_DISABLED');
  assert.deepEqual(directProbe.songs,baseline.songs);
+ assert.deepEqual(Object.keys(directProbe.readDiagnostics.stages).sort(),['approvalMs','openBookMs','propertyMs','tableReads','tablesMs'].sort());
+ const stages=directProbe.readDiagnostics.stages;
+ for(const k of ['approvalMs','openBookMs','propertyMs','tablesMs'])assert(Number.isFinite(stages[k])&&stages[k]>=0);
+ assert.deepEqual(stages.tableReads.map(r=>r.table),['Public Staging','Songs','Members','Beta 40','Writer Splits','Publishing Splits','Master Splits']);
+ for(const read of stages.tableReads){assert.deepEqual(Object.keys(read).sort(),['ms','table']);assert(Number.isFinite(read.ms)&&read.ms>=0);}
+ const directNormal=parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt);
+ assert.equal(directNormal.readDiagnostics,undefined,'Normal response never exposes diagnostics');
+ assert.deepEqual(directNormal,baseline,'Normal public payload unchanged after benchmark');
+ assert(!JSON.stringify(directProbe).includes('@private.test'),'Timing probe must not expose private email');
  delete pctx.ScriptApp;
  delete pctx.UrlFetchApp;
  console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
