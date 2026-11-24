@@ -10,6 +10,7 @@ const SO_LC = Object.freeze({
   sender:'syncoppsofficial@gmail.com', maxPerRun:5, ttlMs:14*86400000,
   headers:['Song ID','Playback Issue (PRIVATE)','Admin Action','Status','Member ID','Original Fingerprint','Token Hash (PRIVATE)','Requested On','Expires On','Correction Submission ID','Corrected Platform','Corrected Link (PRIVATE)','Received On','Applied On','Admin Notes (PRIVATE)'],
   fields:{token:'06e89e17-0ffb-465f-87d7-fc10065d644f',song:'60b83fca-4f00-4f1e-9d85-fb5f5ef344f1',email:'0654132e-e1a6-473a-b7a5-e8e93ec61316',platform:'89c291aa-ee19-47ae-8b77-a2c767b216ef',link:'2f2f8392-af5f-4ae0-81f7-d378eedfd0ea',consent:'71e9e94b-b61a-4235-a331-0cf288c6cf14'},
+  responseIds:{hidden:'017aMA',email:'z2NLzg',platform:'584MkQ',link:'dKNvAV',consent:'YpRkOv'},
   consentText:'I authorize public listening to this corrected music link after approval and confirm that the song and its rights information have not changed.',
   platforms:['SoundCloud','Bandcamp','Spotify','YouTube','Apple Music','DISCO','Artist Website','Direct MP3','Dropbox audio','Google Drive audio']
 });
@@ -40,17 +41,18 @@ function soLCAnswers_(sub){
   for(const r of (sub.responses||[])){
     const value=r.formattedAnswer!==undefined&&r.formattedAnswer!==null&&r.formattedAnswer!==''?r.formattedAnswer:r.answer;
     for(const [k,id] of Object.entries(fields)){
-      if(r.questionId===id||r.questionId===({email:'94f0cc73-6f60-4a4f-9a6e-9bdc88f909ef',link:'88cd22a9-23d8-4e7e-beb5-7348cabe67a2',consent:'3a5a2f41-9f1b-453e-8c5f-9a030ecc4279'}[k]||'')){
+      if(r.questionId===id||r.questionId===SO_LC.responseIds[k]||r.questionId===({email:'94f0cc73-6f60-4a4f-9a6e-9bdc88f909ef',link:'88cd22a9-23d8-4e7e-beb5-7348cabe67a2',consent:'3a5a2f41-9f1b-453e-8c5f-9a030ecc4279'}[k]||'')){
         if(map[k]!==undefined)throw Error('Duplicate correction field');
-        map[k]=Array.isArray(value)?value.map(String).join(', '):soLCText_(value);
+        if(Array.isArray(value)){if(!['platform','consent'].includes(k)||value.length!==1||typeof value[0]!=='string')throw Error('Invalid correction answer cardinality');map[k]=soLCText_(value[0]);}
+        else {if(typeof value!=='string'&&typeof value!=='boolean')throw Error('Invalid correction answer type');map[k]=soLCText_(value);}
       }
     }
     // Tally may bundle hidden fields in one object; trust only exact names.
-    if(r.questionId==='75bf13ed-2c51-4ab7-90d4-c9e80dfe69f9'){
+    if(r.questionId===SO_LC.responseIds.hidden||r.questionId==='75bf13ed-2c51-4ab7-90d4-c9e80dfe69f9'){
       let v=value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(_){v=null;}}
       if(v&&typeof v==='object'&&!Array.isArray(v)){
         for(const [k,key] of [['token','request_token'],['song','song_id']]){
-          if(v[key]!==undefined){if(map[k]!==undefined)throw Error('Duplicate hidden field');map[k]=soLCText_(v[key]);}
+          if(v[key]!==undefined){if(map[k]!==undefined)throw Error('Duplicate hidden field');if(typeof v[key]!=='string')throw Error('Invalid hidden field type');map[k]=soLCText_(v[key]);}
         }
       }
     }
@@ -65,7 +67,7 @@ function soLCValidate_(q,a,song,member,beta,now){
   if(soLCFingerprint_(song)!==q['Original Fingerprint'])return false;
   if(soBBEmail_(a.email)!==soBBEmail_(member['Patreon Email (PRIVATE)']))return false;
   if(!SO_LC.platforms.includes(a.platform)||!soLCUrlValid_(a.link))return false;
-  return a.consent===SO_LC.consentText||a.consent==='true'||a.consent==='TRUE'||a.consent==='3a5a2f41-9f1b-453e-8c5f-9a030ecc4279';
+  return a.consent===SO_LC.consentText||a.consent==='3a5a2f41-9f1b-453e-8c5f-9a030ecc4279';
 }
 function soLCSafeCell_(v){const s=soLCText_(v);return /^[=+@-]/.test(s)?"'"+s:s;}
 function soLCTargets_(q,songs,members,beta){
@@ -141,7 +143,12 @@ function syncOppsMusicLinkCorrectionsDryRun(){
   const key=PropertiesService.getScriptProperties().getProperty(SO_BB_V1.apiProperty);
   if(!key)throw Error('Tally API key unavailable');
   const form=soBBFetchForm_(SO_LC.formId,key);
-  return {mode:'READ ONLY',requests:queue.rows.length,completedResponses:form.submissions.length,emails:0,writes:0};
+  const ids=SO_LC.responseIds;
+  const observed=new Set((form.questions||[]).map(q=>q.id));
+  if(!Object.values(ids).every(id=>observed.has(id)))throw Error('Correction form question schema differs; activation blocked.');
+  let parsed=0,invalid=0;
+  for(const sub of form.submissions){try{const a=soLCAnswers_(sub);if(['token','song','email','platform','link','consent'].every(k=>typeof a[k]==='string'&&a[k]))parsed++;else invalid++;}catch(_){invalid++;}}
+  return {mode:'READ ONLY',schemaVerified:true,requests:queue.rows.length,completedResponses:form.submissions.length,parsedResponses:parsed,unparseableResponses:invalid,emails:0,writes:0};
 }
 function soLCOnExistingTrigger_(e){
   if(!e||!e.triggerUid)return {status:'NOT_TRIGGER'};
