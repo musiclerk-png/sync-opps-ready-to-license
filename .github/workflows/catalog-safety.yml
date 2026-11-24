@@ -18,7 +18,7 @@ permissions:
 jobs:
   no-live-data-regressions:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -47,7 +47,8 @@ jobs:
           const endpoint=config.endpoint;
           if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint)) throw Error('Unexpected endpoint');
           (async()=>{
-            for(let i=1;i<=3;i++){
+            let collected=0;
+            for(let i=1;i<=12 && collected<3;i++){
               const url=new URL(endpoint);
               url.searchParams.set('benchmark','1');
               url.searchParams.set('probe',Date.now()+'-'+i);
@@ -61,38 +62,16 @@ jobs:
                 if(!response.ok || !match) throw Error('Unexpected public response: HTTP '+response.status);
                 const data=JSON.parse(match[1]),d=data.readDiagnostics;
                 if(data.schemaVersion!==1 || !Array.isArray(data.songs) || !d || !Number.isFinite(d.serverMs)) throw Error('Invalid benchmark schema');
-                console.log(JSON.stringify({sample:i,http:response.status,headersMs,totalMs,serverMs:d.serverMs,path:d.path,fallbackReason:d.fallbackReason,stages:d.stages??null,approvedCount:data.songs.length,expectedTrack:data.songs.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)}));
-              }catch(e){console.log(JSON.stringify({sample:i,error:String(e.message),elapsedMs:Math.round(performance.now()-start)}));}
+                if(!d.stages || !Array.isArray(d.stages.tableReads) || d.stages.tableReads.length!==7){
+                  console.log(JSON.stringify({attempt:i,stageTimingReady:false,serverMs:d.serverMs}));
+                  await new Promise(resolve=>setTimeout(resolve,10000));
+                  continue;
+                }
+                collected++;
+                console.log(JSON.stringify({sample:collected,http:response.status,headersMs,totalMs,serverMs:d.serverMs,path:d.path,fallbackReason:d.fallbackReason,stages:d.stages??null,approvedCount:data.songs.length,expectedTrack:data.songs.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)}));
+              }catch(e){console.log(JSON.stringify({attempt:i,error:String(e.message),elapsedMs:Math.round(performance.now()-start)}));await new Promise(resolve=>setTimeout(resolve,5000));}
             }
+            if(collected!==3)throw Error('Three stage timing samples not available within bounded attempts');
           })().catch(e=>{console.error(e.message);process.exitCode=1;});
           NODE
 
-      - name: Measure actual signed-out browser card rendering
-        run: |
-          npm install --no-save --no-package-lock playwright
-          npx playwright install chromium
-          node <<'NODE'
-          const {chromium}=require('playwright');
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            try{
-              for(let i=1;i<=3;i++){
-                const context=await browser.newContext();
-                try{
-                  const page=await context.newPage();
-                  await page.goto('https://musiclerk-png.github.io/sync-opps-ready-to-license/',{waitUntil:'domcontentloaded',timeout:25000});
-                  await page.locator('.song-card').filter({hasText:'Soul Pocket Groove'}).first().waitFor({state:'visible',timeout:15000});
-                  const metrics=await page.evaluate(()=>{
-                    const nav=performance.getEntriesByType('navigation')[0];
-                    const config=performance.getEntriesByType('resource').find(e=>e.name.includes('/feed-config.json'));
-                    const feed=performance.getEntriesByType('resource').find(e=>e.name.startsWith('https://script.google.com/macros/s/'));
-                    const card=document.querySelector('.song-card');
-                    return {cardMs:Math.round(performance.now()),domReadyMs:Math.round(nav?.domContentLoadedEventEnd||0),configMs:config?Math.round(config.duration):null,feedStartMs:feed?Math.round(feed.startTime):null,feedMs:feed?Math.round(feed.duration):null,afterFeedMs:feed?Math.max(0,Math.round(performance.now()-feed.responseEnd)):null,cardCount:document.querySelectorAll('.song-card').length,mp3Preload:card?.querySelector('audio')?.preload??null};
-                  });
-                  console.log(JSON.stringify({browserSample:i,...metrics}));
-                }catch(e){console.log(JSON.stringify({browserSample:i,error:String(e.message).slice(0,250)}));}
-                finally{await context.close();}
-              }
-            }finally{await browser.close();}
-          })().catch(e=>{console.error(e.message);process.exitCode=1;});
-          NODE
