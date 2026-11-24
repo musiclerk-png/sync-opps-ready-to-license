@@ -36,13 +36,14 @@ function doGet(e) {
   const startedAt=Date.now();
   SO_PUBLIC_FEED_READ_PATH_V12='none';
   SO_PUBLIC_FEED_READ_ERROR_V12='none';
+  const timing=e && e.parameter && e.parameter.benchmark==='1' ? {} : null;
   let data = {schemaVersion: 1, songs: []};
-  try { data = soPublicSnapshotV1_(); }
+  try { data = soPublicSnapshotV1_(timing); }
   catch (err) { console.error('Public catalog feed unavailable: ' + String(err)); }
   // Opt-in, nonprivate timing probe. Normal visitor responses are unchanged.
-  if(e && e.parameter && e.parameter.benchmark==='1')
+  if(timing)
     data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt,
-      fallbackReason:SO_PUBLIC_FEED_READ_ERROR_V12};
+      fallbackReason:SO_PUBLIC_FEED_READ_ERROR_V12,stages:timing};
   const json = JSON.stringify(data)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
@@ -60,14 +61,19 @@ function syncOppsPublicFeedDryRun() {
     note:'This only counts records passing ALL publication gates.'}));
 }
 
-function soPublicSnapshotV1_() {
+function soPublicSnapshotV1_(timing) {
+  const propertyStart=timing?Date.now():0;
   const id = PropertiesService.getScriptProperties().getProperty(SO_PUBLIC_FEED_V1.property);
   if (!id || !/^[A-Za-z0-9_-]{25,100}$/.test(id)) throw Error('Private spreadsheet setting is missing or invalid.');
   // Read the seven current approval tables in one fresh formatted Sheets API request
   // where the existing web app's scopes permit it. On API/authorization failure,
   // immediately fall back to the ORIGINAL seven fresh SpreadsheetApp reads.
   // Never use a cached public snapshot or skip a permission gate.
-  const tables=soPublicTablesV12_(id);
+  if(timing)timing.propertyMs=Date.now()-propertyStart;
+  const tablesStart=timing?Date.now():0;
+  const tables=soPublicTablesV12_(id,timing);
+  if(timing)timing.tablesMs=Date.now()-tablesStart;
+  const gateStart=timing?Date.now():0;
   const staging=tables[SO_PUBLIC_FEED_V1.stagingTab];
   const songs=tables[SO_PUBLIC_FEED_V1.songTab];
   const members=tables[SO_PUBLIC_FEED_V1.memberTab];
@@ -172,13 +178,14 @@ function soPublicSnapshotV1_() {
       owners:owners,buyerInquiryUrl:inquiryUrl
     });
   });
+  if(timing)timing.approvalMs=Date.now()-gateStart;
   return {schemaVersion:1,songs:out};
 }
 
 // v1.2 read optimization: seven fresh tab ranges in a single HTTP call.
 // FORMATTED_VALUE preserves the displayed strings required by approval rules.
 // An unavailable API never reuses previously approved, possibly withdrawn data.
-function soPublicTablesV12_(id) {
+function soPublicTablesV12_(id,timing) {
   const names=[
     SO_PUBLIC_FEED_V1.stagingTab,SO_PUBLIC_FEED_V1.songTab,
     SO_PUBLIC_FEED_V1.memberTab,SO_PUBLIC_FEED_V1.betaTab,
@@ -187,7 +194,7 @@ function soPublicTablesV12_(id) {
   ];
   if(!SO_PUBLIC_FEED_BATCH_ENABLED_V12) {
     SO_PUBLIC_FEED_READ_ERROR_V12='BATCH_DISABLED';
-    return soPublicLegacyTablesV12_(id,names);
+    return soPublicLegacyTablesV12_(id,names,timing);
   }
   try {
     const ranges=names.map(function(name) {
@@ -233,13 +240,19 @@ function soPublicTablesV12_(id) {
     // Authorization, API enablement, quota and malformed response errors must
     // retain the old source-of-truth checks, never a stale catalog snapshot.
     console.warn('Batch read unavailable. Using seven current spreadsheet reads.');
-    return soPublicLegacyTablesV12_(id,names);
+    return soPublicLegacyTablesV12_(id,names,timing);
   }
 }
-function soPublicLegacyTablesV12_(id,names) {
+function soPublicLegacyTablesV12_(id,names,timing) {
+  const openStart=timing?Date.now():0;
   const book=SpreadsheetApp.openById(id);
+  if(timing){timing.openBookMs=Date.now()-openStart;timing.tableReads=[];}
   const tables=Object.create(null);
-  names.forEach(function(name){tables[name]=soPublicTableV1_(book,name);});
+  names.forEach(function(name){
+    const readStart=timing?Date.now():0;
+    tables[name]=soPublicTableV1_(book,name);
+    if(timing)timing.tableReads.push({table:name,ms:Date.now()-readStart});
+  });
   SO_PUBLIC_FEED_READ_PATH_V12='legacy';
   return tables;
 }
