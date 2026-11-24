@@ -331,8 +331,13 @@ function soPublicPlayerV1_(source,url) {
     return {type:'bandcamp',url:url};
   if(src.indexOf('apple')>=0 && host==='embed.music.apple.com')
     return {type:'apple',url:url};
-  if(src.indexOf('disco')>=0 && (host==='disco.ac'||host==='www.disco.ac'))
-    return {type:'disco',url:url};
+  if(src.indexOf('disco')>=0)
+    // DISCO official Track/Playlist/Album player uses a creator subdomain,
+    // e.g. record-label.disco.ac/e/t/12345. Share/short links are not players.
+    return host!=='s.disco.ac' &&
+      /^(?:[a-z0-9-]+\.)*disco\.ac$/i.test(host) &&
+      /^https:\/\/(?:[a-z0-9-]+\.)*disco\.ac\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?(?:[?#]|$)/i.test(url)
+      ? {type:'disco',url:url} : null;
   // Owner-approved public audio file links. Keep files on their own hosts and
   // require individual recordings, never folders or general share pages.
   if(src.indexOf('dropbox')>=0)
