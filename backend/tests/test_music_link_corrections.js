@@ -36,3 +36,21 @@ init();process();const expiredToken=token();c.expired=String(Date.now()-1);run("
 init();process();const stale=token();run("soBBPatch_(soBBTable_({},'Songs'),0,{'Stream URL':'https://soundcloud.com/test/changed'})");assert.equal(process([response(stale)]).received,0);
 console.log('PASS: published/paused/managed exclusions, paid and identity gates, duplicate records, ambiguous send no retry, expiry, stale source protection');
 console.log('No actual sheets, email, member records or live catalog touched.');
+
+const actualFixture={"id":"1WLOQvl","isCompleted":true,"submittedAt":"2026-11-24T20:11:34.000Z","responses":[{"questionId":"017aMA","answer":{"request_token":"QA-INVALID-NO-AUTHORITY-20261124","song_id":"QA-NO-REAL-SONG-20261124","song_title":"INTERNAL QA ONLY - Synthetic Correction","issue":"Synthetic response contract test; not a real song or request."}},{"questionId":"z2NLzg","answer":"qa@example.com"},{"questionId":"584MkQ","answer":["Direct MP3"]},{"questionId":"dKNvAV","answer":"https://example.com/synthetic-qa.mp3"},{"questionId":"YpRkOv","answer":["I authorize public listening to this corrected music link after approval and confirm that the song and its rights information have not changed."]}]};
+c.actualFixture=actualFixture;
+const parsed=run('soLCAnswers_(actualFixture)');
+assert.equal(parsed.token,'QA-INVALID-NO-AUTHORITY-20261124');
+assert.equal(parsed.song,'QA-NO-REAL-SONG-20261124');
+assert.equal(parsed.email,'qa@example.com');
+assert.equal(parsed.platform,'Direct MP3');
+assert.equal(parsed.link,'https://example.com/synthetic-qa.mp3');
+assert.equal(parsed.consent,cfg.consentText);
+init();process();assert.equal(process([actualFixture]).received,0);
+const realToken=token();
+const exactShape=copy(actualFixture);exactShape.id='MOCK-VALID-SHORT-IDS';exactShape.responses[0].answer.request_token=realToken;exactShape.responses[0].answer.song_id=id;exactShape.responses[1].answer=email;exactShape.responses[2].answer=['SoundCloud'];exactShape.responses[3].answer=replacement;
+for(const change of [x=>x.responses[0].answer.request_token='bad',x=>x.responses[1].answer='wrong@example.com',x=>x.responses[2].answer=['SoundCloud','Spotify'],x=>x.responses[4].answer=[],x=>x.responses[4].answer=['true'],x=>x.responses.push(copy(x.responses[1])),x=>x.responses[3].questionId='unknown']){
+const invalid=copy(exactShape);change(invalid);assert.equal(process([invalid]).received,0);}
+assert.equal(process([exactShape]).received,1);assert.equal(q().Status,'Correction Received');assert.equal(s()['Stream URL'],orig);assert.equal(process([exactShape]).received,0);
+action('Apply Corrected Link');assert.equal(process().applied,1);assert.equal(s()['Stream URL'],replacement);assert.equal(s()['Catalog Status'],'Hidden');assert.equal(s()['Rights Status'],'Verified');
+console.log('PASS: actual Tally synthetic response contract parsed; invalid original rejected; exact short IDs and arrays, malformed/duplicate fields, explicit consent, valid mock token, quarantine and apply verified');
