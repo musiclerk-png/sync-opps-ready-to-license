@@ -583,7 +583,9 @@ function soBBPlayerAllowedV11_(source,stream){
   if(source.includes('youtube')||source.includes('you tube'))return ['www.youtube.com','www.youtube-nocookie.com'].includes(host)&&/\/embed\//i.test(path);
   if(source.includes('bandcamp'))return ['bandcamp.com','www.bandcamp.com'].includes(host)&&/\/EmbeddedPlayer\//i.test(path);
   if(source.includes('apple'))return host==='embed.music.apple.com';
-  if(source.includes('disco'))return ['disco.ac','www.disco.ac'].includes(host);
+  if(source.includes('disco'))
+    return host!=='s.disco.ac'&&/^(?:[a-z0-9-]+\.)*disco\.ac$/i.test(host)&&
+      /^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?$/i.test(path);
   // Explicitly reject unsupported share pages and folders, even when a
   // provider label happens to include the words "audio" or "MP3".
   if(source.includes('dropbox'))
