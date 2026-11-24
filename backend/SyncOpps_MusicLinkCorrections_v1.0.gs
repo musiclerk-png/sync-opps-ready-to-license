@@ -19,7 +19,7 @@ function soLCFingerprint_(s){return soLCHash_(JSON.stringify([s['Song ID'],s['Me
 function soLCRecord_(table,row){return Object.fromEntries(table.headers.map((h,i)=>[h,soLCText_(row[i])]));}
 function soLCUnique_(table,key,value){const hits=table.rows.map((row,i)=>({row,i})).filter(x=>soBBC_(x.row,table,key)===value);return hits.length===1?{i:hits[0].i,row:soLCRecord_(table,hits[0].row)}:null;}
 function soLCEligible_(song,member,beta){
-  return !!song&&!!member&&!!beta&&song['Catalog Status']==='Hidden'&&
+  return !!song&&!!member&&song['Catalog Status']==='Hidden'&&
     !song['Preview Host Public ID (PRIVATE)']&&
     !/managed mp3|upload authorized mp3/i.test(song['Music Source'])&&
     !/withdraw|removed|archive|reject|pause/i.test(song['Review Status'])&&
@@ -27,7 +27,7 @@ function soLCEligible_(song,member,beta){
     member['Member ID']===song['Member ID']&&member['Membership Status']==='Active Paid'&&
     ['$5 Standard','$10 Pro'].includes(member['Patreon Tier'])&&!!member['Eligibility Verified On']&&
     soBBEmailValid_(soBBEmail_(member['Patreon Email (PRIVATE)']))&&
-    beta['Member ID']===member['Member ID']&&beta['Invite Status']==='Accepted'&&beta['Eligibility Verified']==='Yes';
+    (Date.now()>=Date.parse('2027-01-05T06:00:00Z')||(beta['Member ID']===member['Member ID']&&beta['Invite Status']==='Accepted'&&beta['Eligibility Verified']==='Yes'&&soBBEmail_(beta['Patreon Email (PRIVATE)'])===soBBEmail_(member['Patreon Email (PRIVATE)'])));
 }
 function soLCUrlValid_(s){
   // No server-side fetch of member-provided URLs. Actual provider and playback
@@ -72,7 +72,7 @@ function soLCTargets_(q,songs,members,beta){
   const s=soLCUnique_(songs,'Song ID',q['Song ID']);
   const m=s&&soLCUnique_(members,'Member ID',s.row['Member ID']);
   const b=m&&soLCUnique_(beta,'Member ID',m.row['Member ID']);
-  return {s,m,b,ok:!!(s&&m&&b&&soLCEligible_(s.row,m.row,b.row))};
+  return {s,m,b,ok:!!(s&&m&&soLCEligible_(s.row,m.row,b?.row||{}))};
 }
 function soLCMessage_(song,issue,token){
   const params=[['request_token',token],['song_id',song['Song ID']],['song_title',song['Song Title']],['issue',issue]].map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
@@ -83,6 +83,7 @@ function soLCProcess_(book,form,allowSend){
   SO_LC.headers.forEach(h=>soBBI_(queue,h));
   const counts={sent:0,received:0,applied:0,blocked:0,uncertain:0};
   const now=Date.now();
+  for(let i=0;i<queue.rows.length;i++){const q=soLCRecord_(queue,queue.rows[i]);if(q.Status==='Awaiting Corrected Link'&&Number(q['Expires On'])<=now)soBBPatch_(queue,i,{'Status':'Expired','Admin Action':'','Token Hash (PRIVATE)':''});}
   // Only an explicit admin action may send. Ambiguous sends are never retried.
   for(let i=0;i<queue.rows.length;i++){
     if(counts.sent>=SO_LC.maxPerRun)break;
@@ -112,7 +113,7 @@ function soLCProcess_(book,form,allowSend){
     const matches=queue.rows.map((row,i)=>({q:soLCRecord_(queue,row),i})).filter(x=>x.q.Status==='Awaiting Corrected Link'&&a.token&&x.q['Token Hash (PRIVATE)']===soLCHash_(a.token));
     if(matches.length!==1)continue;
     const {q,i}=matches[0],t=soLCTargets_(q,songs,members,beta);
-    if(!t.ok||!soLCValidate_(q,a,t.s.row,t.m.row,t.b.row,now)){counts.blocked++;continue;}
+    if(!t.ok||!soLCValidate_(q,a,t.s.row,t.m.row,t.b?.row||{},now)){counts.blocked++;continue;}
     soBBPatch_(queue,i,{'Status':'Correction Received','Correction Submission ID':sub.id,'Corrected Platform':a.platform,'Corrected Link (PRIVATE)':soLCSafeCell_(a.link),'Received On':String(now),'Token Hash (PRIVATE)':'','Admin Action':''});
     used.add(sub.id);counts.received++;
   }
@@ -125,7 +126,8 @@ function soLCProcess_(book,form,allowSend){
     if(!t.ok||soLCFingerprint_(t.s.row)!==q['Original Fingerprint']||!SO_LC.platforms.includes(q['Corrected Platform'])||!soLCUrlValid_(q['Corrected Link (PRIVATE)'])){counts.blocked++;continue;}
     const stages=staging.rows.map((row,j)=>({row,j})).filter(x=>soBBC_(x.row,staging,'Song ID')===q['Song ID']);
     if(stages.length>1){counts.blocked++;continue;}
-    for(const st of stages)soBBPatch_(staging,st.j,{'Final QA Check':'No','Ready for Separate Public Export':'No'});
+    for(const st of stages)soBBPatch_(staging,st.j,{'Final QA Check':'No','Ready for Separate Public Export':'No','Stream URL / Embed ID':'','Music Source':''});
+    SpreadsheetApp.flush();
     // One row write: hidden status remains hidden, rights columns unchanged.
     soBBPatch_(songs,t.s.i,{'Music Source':q['Corrected Platform'],'Stream URL':q['Corrected Link (PRIVATE)'],'Authorized Embed Reference':'','Playback Status':'Not Tested','Review Status':'Under Review','Last Stream Check':'','Updated On':new Date()});
     soBBPatch_(queue,i,{'Status':'Applied','Admin Action':'','Applied On':String(now),'Admin Notes (PRIVATE)':'Returned to review. Playback and final publication approvals still required.'});
