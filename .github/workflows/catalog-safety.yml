@@ -45,6 +45,8 @@ jobs:
                 const outer=page.locator('iframe[src*="qa_control=static"]'),frame=page.frameLocator('iframe[src*="qa_control=static"]');
                 await frame.locator('#source').waitFor({state:'visible',timeout:20000});
                 const original=page.url();
+                const initial=await frame.locator('body').evaluate(()=>({w:innerWidth,h:innerHeight,scrollH:document.documentElement.scrollHeight,buttonBottom:document.querySelector('#test').getBoundingClientRect().bottom}));
+                assert.ok(initial.buttonBottom<=initial.h,'Initial test button clipped');
                 await frame.locator('#source').fill(url);
                 await frame.locator('#test').click();
                 const audio=frame.locator('audio');
@@ -59,39 +61,50 @@ jobs:
                 if(!copyStatus.startsWith('Copied'))await frame.locator('#copyValue').press('Control+c');
                 await input.click();await page.keyboard.press('Control+v');
                 assert.equal(await input.inputValue(),url);
-                const layout=await frame.locator('body').evaluate(()=>({innerWidth,innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight}));
+                const layout=await frame.locator('body').evaluate(()=>({innerWidth,innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight,copyBottom:document.querySelector('#copy').getBoundingClientRect().bottom,playerBottom:document.querySelector('audio').getBoundingClientRect().bottom}));
+                assert.ok(layout.copyBottom<=layout.innerHeight&&layout.playerBottom<=layout.innerHeight,'MP3 or copy control clipped');
                 assert.ok(layout.scrollWidth<=layout.innerWidth+2,'Horizontal overflow');
                 assert.equal(page.url(),original);
-                console.log(JSON.stringify({qaReal:mobile?'mobile viewport':'desktop',approvedMP3:true,media,actualClipboardPaste:true,layout,stayedOnForm:true,noSubmission:true}));
+                console.log(JSON.stringify({qaReal:mobile?'mobile viewport':'desktop',approvedMP3:true,media,actualClipboardPaste:true,initial,layout,stayedOnForm:true,noSubmission:true}));
+                await frame.locator('#edit').click();
                 await frame.locator('#source').fill(sample);
                 await frame.locator('#test').click();
                 const scframe=frame.locator('#player iframe');
                 await scframe.waitFor({state:'visible',timeout:10000});
-                // Use the provider's official Widget API for read-only playback evidence.
-                // No mocked provider, no audio recording or downloading.
                 const sf=await outer.elementHandle();const widgetHost=await sf.contentFrame();
-                let evidence={ready:false,playing:false,progressMs:0,error:false};
+                const nested=frame.frameLocator('#player iframe');
+                let evidence={ready:false,playing:false,progressMs:0,positions:[],error:false,clicked:false};
                 try{
                   await widgetHost.addScriptTag({url:'https://w.soundcloud.com/player/api.js'});
                   await widgetHost.evaluate(()=>{
-                    window.qaSC={ready:false,playing:false,progressMs:0,error:false};
-                    const w=window.SC.Widget(document.querySelector('#player iframe'));
-                    window.qaWidget=w;
+                    window.qaSC={ready:false,playing:false,progressMs:0,positions:[],error:false};
+                    const w=window.SC.Widget(document.querySelector('#player iframe'));window.qaWidget=w;
                     w.bind(window.SC.Widget.Events.READY,()=>{window.qaSC.ready=true;});
                     w.bind(window.SC.Widget.Events.PLAY,()=>{window.qaSC.playing=true;});
                     w.bind(window.SC.Widget.Events.PLAY_PROGRESS,p=>{window.qaSC.progressMs=Math.max(window.qaSC.progressMs,p.currentPosition||0);});
                     w.bind(window.SC.Widget.Events.ERROR,()=>{window.qaSC.error=true;});
-                    w.getDuration(d=>{if(d>0)window.qaSC.ready=true;});
+                    w.getDuration(d=>{if(d>0)window.qaSC.ready=true;window.qaSC.duration=d;});
                   });
-                  await widgetHost.waitForFunction(()=>window.qaSC.ready||window.qaSC.error,{},{timeout:20000});
-                  // Initiate playback via a deliberate click on a QA-only control within the iframe.
-                  await widgetHost.evaluate(()=>{const b=document.createElement('button');b.id='qa-sc-play';b.textContent='QA playback';b.onclick=()=>window.qaWidget.play();document.body.append(b);});
-                  await widgetHost.locator('#qa-sc-play').click();
-                  await widgetHost.waitForFunction(()=>window.qaSC.progressMs>500||window.qaSC.error,{},{timeout:20000});
-                  evidence=await widgetHost.evaluate(()=>window.qaSC);
-                }catch(e){evidence=await widgetHost.evaluate(()=>window.qaSC||{ready:false,playing:false,progressMs:0,error:false}).catch(()=>evidence);evidence.blocker=String(e.message).split('\n')[0].slice(0,180);}
+                  await widgetHost.waitForFunction(()=>window.qaSC.ready||window.qaSC.error,{},{timeout:15000});
+                  // A real click on the provider's own control, not a parent-frame API play request.
+                  const buttons=nested.locator('button[title*="Play"],button[aria-label*="Play"],button.playButton,[role="button"][aria-label*="Play"]');
+                  const b=buttons.first();
+                  await b.waitFor({state:'visible',timeout:12000});
+                  await b.click({timeout:12000});
+                  evidence.clicked=true;
+                  for(let i=0;i<5;i++){
+                    await page.waitForTimeout(1800);
+                    await widgetHost.evaluate(()=>{window.qaWidget.getPosition(p=>window.qaSC.positions.push(p));});
+                  }
+                  await page.waitForTimeout(1000);
+                }catch(e){evidence.blocker=String(e.message).split('\n')[0].slice(0,180);}
+                const observed=await widgetHost.evaluate(()=>window.qaSC||{}).catch(()=>({}));
+                evidence={...evidence,...observed};
+                const advancing=evidence.progressMs>500||evidence.positions.some((p,i)=>i>0&&p-evidence.positions[0]>500);
                 await widgetHost.evaluate(()=>window.qaWidget?.pause()).catch(()=>{});
-                console.log(JSON.stringify({qaProvider:mobile?'mobile viewport':'desktop',provider:'SoundCloud official documented sample',...evidence,formatOnly:!(evidence.playing&&evidence.progressMs>500),stayedOnForm:page.url()===original}));
+                const providerLayout=await frame.locator('body').evaluate(()=>({h:innerHeight,w:innerWidth,scrollH:document.documentElement.scrollHeight,copyBottom:document.querySelector('#copy').getBoundingClientRect().bottom,playerTop:document.querySelector('#player iframe').getBoundingClientRect().top}));
+                assert.ok(providerLayout.copyBottom<=providerLayout.h,'Provider copy button clipped');
+                console.log(JSON.stringify({qaProvider:mobile?'mobile viewport':'desktop',provider:'SoundCloud official sample',...evidence,advancing,providerLayout,stayedOnForm:page.url()===original}));
                 await context.close();
               }
             }finally{await browser.close();}
