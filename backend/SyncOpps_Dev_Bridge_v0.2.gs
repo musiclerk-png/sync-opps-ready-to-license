@@ -46,9 +46,9 @@ function SO_bridgeInstallReadOnly() {
   const lock=LockService.getScriptLock();lock.waitLock(30000);
   try {
     const p=PropertiesService.getScriptProperties();
+    SO_bridgeAssert_(!SO_bridgeState_()&&!SO_bridgeFindRequest_(),'Do not interrupt bridge work.');
+    SO_bridgeAssert_(!p.getProperty(SO_BRIDGE.targetProperty),'Use SO_bridgeEnrollDashboard for the expanded bridge; do not reset existing pins.');
     p.setProperty(SO_BRIDGE.armedProperty,'false');
-    p.deleteProperty(SO_BRIDGE.stateProperty);
-    SO_bridgeAssert_(!p.getProperty(SO_BRIDGE.dashboardDeploymentProperty),'Use SO_bridgeEnrollDashboard for the expanded bridge; do not reset existing pins.');
     const report=SO_bridgeInventory_();
     if(report.result==='PASS') p.setProperty(SO_BRIDGE.targetProperty,JSON.stringify(report.target_ids));
     SO_bridgeEnsurePollTrigger_(); // disarmed, in management project ONLY
@@ -244,7 +244,13 @@ function SO_bridgeInventory_() {
       if(k==='feed'||k==='dashboard'){
         const spec=SO_bridgeDeploySpec_(k);
         const d=SO_bridgeDeployment_(x.id,spec.id);
-        if(k==='dashboard'){SO_bridgeDashboardManifest_(files);SO_bridgeDashboardDeploymentCheck_(x.id,d,spec);}
+        if(k==='dashboard'){
+          const m=SO_bridgeDashboardManifest_(files);
+          SO_bridgeDashboardDeploymentCheck_(x.id,d,spec);
+          target.projectSha256=SO_bridgeAllHash_(files);
+          target.manifestSha256=SO_bridgeHash_(m.file.source);
+          target.writeScope=m.write;
+        }
         target.deployedVersion=Number((d.deploymentConfig||{}).versionNumber||0);
         target.deploymentId=d.deploymentId;
         target.webAppUrl=SO_bridgeWebUrl_(d);
@@ -390,11 +396,13 @@ function SO_bridgePrecheck_(s) {
     if(r.project==='dashboard'){
       SO_bridgeDashboardDeploymentCheck_(r.target_script_id,deployment,spec);
       const m=SO_bridgeDashboardManifest_(current);
+      SO_bridgeAssert_(file.getSharingAccess()===DriveApp.Access.PRIVATE,'Dashboard request must not be public or link-shared.');
       SO_bridgeAssert_(r.expected_manifest_sha256===SO_bridgeHash_(m.file.source),'Dashboard manifest changed.');
       SO_bridgeAssert_(r.expected_project_sha256===SO_bridgeAllHash_(current),'Dashboard project changed.');
       if(r.dashboard_scope_upgrade!==undefined)SO_bridgeAssert_(r.dashboard_scope_upgrade==='APPROVED_READ_WRITE'&&!m.write,'Only separately approved read-only to write transition is allowed.');
     }
   }
+  if(r.project==='dashboard')SO_bridgeAssert_(folder.getSharingAccess()===DriveApp.Access.PRIVATE,'Private dashboard snapshots require a non-public folder.');
   const backupName=SO_BRIDGE.backupPrefix+r.request_id+'.json';
   SO_bridgeAssert_(!folder.getFilesByName(backupName).hasNext(),'Duplicate backup request ID.');
   const backup=folder.createFile(backupName,JSON.stringify({source:r,files:current,deployment:deployment},null,2),
@@ -479,6 +487,7 @@ function SO_bridgeVerifyDeploy_(s) {
     const spec=SO_bridgeDashboardSpec_();
     const checked=SO_bridgeDashboardDeploymentCheck_(s.target_script_id,d,spec);
     SO_bridgeAssert_(checked.version===Number(s.new_version)&&SO_bridgeAllHash_(checked.files)===s.candidate_project_sha,'Private deployment version/source mismatch.');
+    SO_bridgeAssert_(SO_bridgeAllHash_(SO_bridgeContent_(s.target_script_id).files)===s.candidate_project_sha,'Dashboard HEAD changed during deployment.');
     s.phase='FINALIZE';return SO_bridgeCheckpoint_(s,'PRIVATE_DASHBOARD_DEPLOYMENT_METADATA_VERIFIED');
   }
   if(Number((d.deploymentConfig||{}).versionNumber)===Number(s.new_version)&&
