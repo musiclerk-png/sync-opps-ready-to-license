@@ -65,7 +65,7 @@ jobs:
           npx playwright install chromium
           node <<'NODE'
           const {chromium}=require('playwright');
-          const {performance}=require('node:perf_hooks');
+          const nodePerf=require('node:perf_hooks').performance;
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
@@ -73,12 +73,12 @@ jobs:
                 const context=await browser.newContext();
                 try{
                   const page=await context.newPage();
-                  const start=performance.now();
+                  const start=nodePerf.now();
                   await page.goto('https://musiclerk-png.github.io/sync-opps-ready-to-license/',{waitUntil:'domcontentloaded',timeout:20000});
                   await page.locator('.song-card').filter({hasText:'Soul Pocket Groove'}).first().waitFor({state:'visible',timeout:15000});
-                  const cardMs=Math.round(performance.now()-start);
+                  const cardMs=Math.round(nodePerf.now()-start);
                   const data=await page.evaluate(()=>{
-                    const entries=performance.getEntriesByType('resource');
+                    const entries=globalThis.performance.getEntriesByType('resource');
                     const feed=entries.find(e=>e.name.includes('script.google.com/macros/s/'));
                     return {feedStartMs:feed?Math.round(feed.startTime):null,feedMs:feed?Math.round(feed.duration):null,cardCount:document.querySelectorAll('.song-card').length,mp3Preload:document.querySelector('audio')?.getAttribute('preload')??null};
                   });
