@@ -26,8 +26,10 @@ const SO_PUBLIC_FEED_V1 = Object.freeze({
   version: 1
 });
 
-// The existing Sheets REST API authorization is unavailable in production.
-// Default directly to fresh SpreadsheetApp reads; enable only after proven authorization.
+// Advanced Sheets passed six live parity and performance comparisons.
+// Default to one fresh batchGet; fall back to all seven fresh reads on failure.
+let SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13=true;
+// Keep the older REST path disabled.
 let SO_PUBLIC_FEED_BATCH_ENABLED_V12=false;
 let SO_PUBLIC_FEED_READ_PATH_V12='none';
 let SO_PUBLIC_FEED_READ_ERROR_V12='none';
@@ -38,15 +40,16 @@ function doGet(e) {
   SO_PUBLIC_FEED_READ_ERROR_V12='none';
   const timing=e && e.parameter && e.parameter.benchmark==='1' ? {} : null;
   let data = {schemaVersion: 1, songs: []};
-  try { data = soPublicSnapshotV1_(timing); }
+  const compare=timing && e.parameter.compare==='advanced';
+  try { data = soPublicSnapshotV1_(timing,compare?'legacy':undefined); }
   catch (err) { console.error('Public catalog feed unavailable: ' + String(err)); }
   // Opt-in, nonprivate timing probe. Normal visitor responses are unchanged.
   if(timing)
     data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt,
       fallbackReason:SO_PUBLIC_FEED_READ_ERROR_V12,stages:timing};
-  // Only the explicit comparison probe exercises the candidate reader. The
-  // response always contains the original fresh legacy payload, never candidate data.
-  if(timing && e.parameter.compare==='advanced') {
+  // An explicit comparison still returns the freshly read legacy payload;
+  // ordinary requests use the proven advanced reader with fresh fallback.
+  if(compare) {
     const compareStart=Date.now(), candidateTiming={};
     let comparison={status:'FAILED',serverMs:0,parity:false};
     try {
@@ -210,12 +213,25 @@ function soPublicTablesV12_(id,timing,reader) {
     SO_PUBLIC_FEED_V1.writerTab,SO_PUBLIC_FEED_V1.publishingTab,
     SO_PUBLIC_FEED_V1.masterTab
   ];
-  if(reader==='advanced') {
-    const parsed=Sheets.Spreadsheets.Values.batchGet(id,{
-      ranges:names.map(function(name){return "'"+name.replace(/'/g,"''")+"'";}),
-      valueRenderOption:'FORMATTED_VALUE',majorDimension:'ROWS'
-    });
-    return soPublicParseBatchV12_(parsed,names);
+  if(reader==='advanced' || (reader!=='legacy' && SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13)) {
+    try {
+      const parsed=Sheets.Spreadsheets.Values.batchGet(id,{
+        ranges:names.map(function(name){return "'"+name.replace(/'/g,"''")+"'";}),
+        valueRenderOption:'FORMATTED_VALUE',majorDimension:'ROWS'
+      });
+      const tables=soPublicParseBatchV12_(parsed,names);
+      SO_PUBLIC_FEED_READ_PATH_V12='advanced';
+      return tables;
+    } catch(err) {
+      if(reader==='advanced')throw err; // Explicit comparison must detect failure, not silently fall back.
+      SO_PUBLIC_FEED_READ_ERROR_V12='ADVANCED_UNAVAILABLE';
+      console.warn('Advanced Sheets unavailable. Using seven current spreadsheet reads.');
+      return soPublicLegacyTablesV12_(id,names,timing);
+    }
+  }
+  if(reader==='legacy') {
+    SO_PUBLIC_FEED_READ_ERROR_V12='LEGACY_COMPARISON';
+    return soPublicLegacyTablesV12_(id,names,timing);
   }
   if(!SO_PUBLIC_FEED_BATCH_ENABLED_V12) {
     SO_PUBLIC_FEED_READ_ERROR_V12='BATCH_DISABLED';
