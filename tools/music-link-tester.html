@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Test your music link | Sync Opps. Ready to License</title>
+<style>*{box-sizing:border-box}body{font:13px/1.3 Arial,sans-serif;color:#281b15;margin:0;padding:6px;background:#fff8f1}h2{font-size:15px;margin:0 0 4px}p{margin:0 0 5px}input,button{font:inherit;border-radius:5px;padding:6px;max-width:100%}input{width:100%;border:1px solid #cbb09e;min-height:32px}button{background:#a94108;color:#fff;border:0;min-height:32px;margin:4px 4px 4px 0;cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}iframe,audio{display:block;width:100%;border:0}#status,#copyStatus{margin:3px 0}#result[hidden],#entry[hidden],#copyValue[hidden]{display:none}#resultActions{position:sticky;top:0;background:#fff8f1;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:2px}#copyStatus:empty{display:none}#copyValue{margin-bottom:4px}#player{margin:4px 0}#player audio{height:40px}#player iframe{max-height:285px}#result p{font-size:12px}</style></head><body>
+<div id="entry"><h2>Test your music link (optional)</h2><p>Test before submitting, or skip if your link works.</p>
+<label for="source" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden">Music link or official embed player URL</label><input id="source" type="url" autocomplete="off" spellcheck="false" placeholder="https://...">
+<button type="button" id="test">Test Music Link</button></div><div id="status" role="status">No link tested.</div>
+<div id="result" hidden><div id="resultActions"><button type="button" id="copy">Copy Music Link</button><button type="button" id="edit">Change Link</button></div><div id="copyStatus" role="status"></div><input id="copyValue" aria-label="Tested link" readonly hidden><div id="player"></div><p>Press Play to check your recording. Scroll within this box if needed.</p></div>
+<script>
+'use strict';
+function error(msg){throw new Error(msg);}
+function urlOf(raw){
+ let u;
+ try{u=new URL(raw.trim());}catch(e){error('Enter a complete HTTPS track link or a complete official iframe code.');}
+ if(u.protocol!=='https:'||u.username||u.password||u.href.length>2500||/[<>"'\s]/.test(u.href))error('Only safe HTTPS media links are accepted.');
+ return u;
+}
+function originalReference(raw){
+ const s=raw.trim();
+ if(!s.startsWith('<'))return {url:s,isIframe:false};
+ if(s.length>12000)error('Embed code is too long.');
+ const d=new DOMParser().parseFromString(s,'text/html'),iframes=d.querySelectorAll('iframe');
+ if(iframes.length!==1)error('Paste a single official iframe embed code.');
+ return {url:iframes[0].getAttribute('src')||'',isIframe:true};
+}
+function cleanSoundcloud(u){
+ if(!['soundcloud.com','www.soundcloud.com'].includes(u.hostname.toLowerCase())||!/^\/[^/?#]+\/[^/?#]+/.test(u.pathname))error('SoundCloud needs an actual track Share link.');
+ const clean=new URL(u.origin+u.pathname);
+ const token=u.searchParams.get('secret_token');
+ if(token&&/^s-[a-z0-9_-]{4,100}$/i.test(token))clean.searchParams.set('secret_token',token);
+ return clean.href;
+}
+function compile(raw,chosen){
+ const parsed=originalReference(raw);
+ const u=urlOf(parsed.url),host=u.hostname.toLowerCase(),path=u.pathname;
+ let kind=chosen;
+ if(kind==='auto'){
+  if(['soundcloud.com','www.soundcloud.com','w.soundcloud.com'].includes(host))kind='soundcloud';
+  else if(host==='open.spotify.com')kind='spotify';
+  else if(['youtube.com','www.youtube.com','m.youtube.com','youtu.be','www.youtube-nocookie.com'].includes(host))kind='youtube';
+  else if(['bandcamp.com','www.bandcamp.com'].includes(host))kind='bandcamp';
+  else if(['music.apple.com','embed.music.apple.com'].includes(host))kind='apple';
+  else if(host==='s.disco.ac'||host==='disco.ac'||host.endsWith('.disco.ac'))kind='disco';
+  else if(['untitled.stream','web.untitled.stream','embed.untitled.stream'].includes(host))kind='untitled';
+  else if(host==='drive.google.com')kind='gdrive';
+  else if(['dropbox.com','www.dropbox.com'].includes(host))kind='dropbox';
+  else if(/\.mp3$/i.test(path))kind='mp3';
+  else error('This website link is not a recognized embeddable player. Request an official supported provider embed, or an authorized direct HTTPS MP3 preview.');
+ }
+ let dest,ref,tag='iframe',height=180,advisory='',experimental=false;
+ if(kind==='soundcloud'){
+  const embed=new URL('https://w.soundcloud.com/player/');
+  if(host==='w.soundcloud.com'&&/^\/player\/?$/.test(path)){
+   const content=urlOf(u.searchParams.get('url')||'');
+   if(['soundcloud.com','www.soundcloud.com'].includes(content.hostname.toLowerCase()))ref=cleanSoundcloud(content);
+   else if(content.hostname.toLowerCase()==='api.soundcloud.com'&&/^\/tracks\/\d+$/.test(content.pathname))ref=content.href;
+   else error('Unrecognized SoundCloud track inside the official embed.');
+  }else ref=cleanSoundcloud(u);
+  embed.searchParams.set('url',ref);embed.searchParams.set('color','#a83b06');embed.searchParams.set('show_artwork','false');
+  embed.searchParams.set('hide_related','true');embed.searchParams.set('show_comments','false');
+  dest=embed.href;height=164;
+  advisory='SoundCloud public or private visibility does not guarantee embedding. If the widget says the track cannot play outside SoundCloud, this is a blocked playback result, not an approved track. Verify owner-controlled embed permissions or request another authorized source.';
+ }else if(kind==='spotify'){
+  if(host!=='open.spotify.com')error('Spotify must use open.spotify.com.');
+  const m=path.match(/^\/(?:embed\/)?(track|album|playlist)\/([A-Za-z0-9]{22})\/?$/);
+  if(!m)error('Use a Spotify track, album or playlist link.');
+  dest='https://open.spotify.com/embed/'+m[1]+'/'+m[2];ref=dest;height=152;
+  if(m[1]!=='track')advisory='This is an album or playlist. A single-song catalog entry needs the individual track URL.';
+ }else if(kind==='youtube'){
+  let id='';
+  if(host==='youtu.be')id=path.slice(1);
+  else if(['youtube.com','www.youtube.com','m.youtube.com','www.youtube-nocookie.com'].includes(host)){
+   if(path==='/watch')id=u.searchParams.get('v')||'';
+   else{const m=path.match(/^\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{11})\/?$/);if(m)id=m[1];}
+  }
+  if(!/^[A-Za-z0-9_-]{11}$/.test(id))error('Use a valid YouTube video or unlisted video link.');
+  dest='https://www.youtube-nocookie.com/embed/'+id+'?rel=0';ref=dest;height=215;
+ }else if(kind==='bandcamp'){
+  if(!['bandcamp.com','www.bandcamp.com'].includes(host)||!/^\/EmbeddedPlayer\//.test(path))
+   error('Bandcamp track pages cannot be embedded directly. Open the track, choose Share / Embed, and paste its official iframe code.');
+  dest=u.href;ref=dest;height=145;
+ }else if(kind==='apple'){
+  if(!['music.apple.com','embed.music.apple.com'].includes(host))
+   error('Apple Music requires an official Apple Music song or embed link.');
+  dest='https://embed.music.apple.com'+path+u.search;ref=dest;height=178;
+ }else if(kind==='disco'){
+  if(host==='s.disco.ac')
+   error('This is a DISCO Share link, not an embed player. In DISCO, open the Track menu → Share → Embed → Copy embed code.');
+  if(host==='s.disco.ac'||!(/^(?:[a-z0-9-]+\.)*disco\.ac$/i.test(host))||!/^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?$/i.test(path))
+   error('DISCO requires the official Track or Playlist → Share → Embed iframe code or its src URL, not a Share URL.');
+  dest=u.href;ref=dest;height=285;
+  advisory='Official DISCO embedded player reference recognized. Use a real, authorized track to verify playback for a signed-out visitor before requesting publication. Disable downloads in DISCO unless explicitly permitted.';
+ }else if(kind==='untitled'){
+  if(!parsed.isIframe||!['untitled.stream','web.untitled.stream','embed.untitled.stream'].includes(host)||/^\/library\//.test(path))
+   error('Untitled library links are not embeddable. Obtain the official iframe code from the track’s Embed option, if available.');
+  dest=u.href;ref=dest;height=280;experimental=true;
+  advisory='Untitled official embed can be checked here. Production support requires separate backend verification.';
+ }else if(kind==='gdrive'){
+  if(host!=='drive.google.com')error('Google Drive needs a drive.google.com file-sharing URL.');
+  const m=path.match(/^\/file\/d\/([A-Za-z0-9_-]{15,})\/(?:view|preview)?\/?$/);
+  if(!m)error('Use a direct Google Drive file link: drive.google.com/file/d/FILE_ID/view . Folder links are not supported.');
+  dest='https://drive.google.com/file/d/'+m[1]+'/preview';ref=dest;height=280;
+  advisory='Google Drive audio must be shared with Anyone with the link (Viewer). Confirm the individual preview plays without signing in before requesting publication.';
+ }else if(kind==='dropbox'){
+  if(!['dropbox.com','www.dropbox.com'].includes(host)||!/^\/(?:s\/|scl\/fi\/)/.test(path))
+   error('Use a Dropbox shared audio-file URL, not a folder or general page.');
+  if(!/\.(mp3|wav|m4a|aac|ogg)$/i.test(path))error('Dropbox audio requires an individual shared .mp3, .wav, .m4a, .aac or .ogg file.');
+  const clean=new URL(u.href);
+  clean.searchParams.delete('dl');clean.searchParams.set('raw','1');
+  dest=clean.href;ref=dest;tag='audio';
+  advisory='Dropbox audio links must allow unsigned visitors to play the recording. Raw file playback can vary with sharing settings and Dropbox delivery limits.';
+ }else if(kind==='mp3'){
+  if(!/\.mp3$/i.test(path))error('A direct MP3 needs an HTTPS file URL with a .mp3 path.');
+  dest=u.href;ref=dest;tag='audio';
+ }else error('Choose a supported provider.');
+ return {type:kind,dest,reference:ref,tag,height,experimental,advisory};
+}
+
+const source=document.getElementById('source'),status=document.getElementById('status'),result=document.getElementById('result'),player=document.getElementById('player'),value=document.getElementById('copyValue'),copyStatus=document.getElementById('copyStatus');
+const entry=document.getElementById('entry');function reset(){player.replaceChildren();result.hidden=true;entry.hidden=false;value.hidden=true;value.value='';copyStatus.textContent='';status.textContent='No link tested.';window.scrollTo(0,0);}document.getElementById('edit').addEventListener('click',()=>{reset();source.focus();});
+source.addEventListener('input',reset);
+document.getElementById('test').addEventListener('click',()=>{reset();try{const input=urlOf(source.value),info=compile(input.href,'auto');if(info.experimental)throw Error('This provider is not yet supported for catalog submissions.');if(info.type==='spotify'&&!/\/track\//.test(info.dest))throw Error('Use an individual Spotify track link.');let el;if(info.tag==='audio'){el=document.createElement('audio');el.controls=true;el.setAttribute('controlsList','nodownload');el.preload='none';el.src=info.dest;el.addEventListener('error',()=>{status.textContent='Audio could not load. Check sharing and the link.';});el.addEventListener('playing',()=>{status.textContent='Audio playback started. Listen to confirm the correct recording.';});}else{el=document.createElement('iframe');el.src=info.dest;el.title='Music player';el.height=String(info.height);el.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';el.referrerPolicy='strict-origin-when-cross-origin';}player.appendChild(el);value.value=input.href;result.hidden=false;entry.hidden=true;window.scrollTo(0,0);status.textContent='Compatible format. Press Play to check.';}catch(e){status.textContent=e.message;}});
+document.getElementById('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(value.value);copyStatus.textContent='Copied. Paste into the submission field.';}catch(e){value.hidden=false;value.focus();value.select();try{if(document.execCommand('copy')){value.hidden=true;copyStatus.textContent='Copied. Paste into the submission field.';return;}}catch(e){}copyStatus.textContent='Copy not permitted here. The link is selected: use Ctrl+C or your device copy command, then paste into the submission field.';}});
+</script></body></html>
