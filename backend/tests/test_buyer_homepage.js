@@ -56,6 +56,16 @@ check('Fake inquiry site rejected',normalizeSong({...seed,buyerInquiryUrl:'https
 check('Wrong Cloudinary host rejected',normalizeSong({...seed,player:{type:'mp3',url:file.replace('res.cloudinary.com','evil.example')}})===null);
 check('Nonmanaged track cannot use MP3',normalizeSong({...seed,source:'SoundCloud'})===null);
 check('Valid SoundCloud track remains usable',!!normalizeSong({...seed,source:'SoundCloud',player:{type:'soundcloud',url:'https://soundcloud.com/example/test'}}));
+const dbLink='https://www.dropbox.com/scl/fi/a1b2c3d4e5f6/example-audio.wav?rlkey=allow123&dl=0';
+const drLink='https://drive.google.com/file/d/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy/view?usp=sharing';
+const dbSong=normalizeSong({...seed,source:'Dropbox MP3',player:{type:'dropbox',url:dbLink}});
+check('Dropbox file share converts to a raw playable audio URL',!!dbSong&&dbSong.player.url.startsWith('https://www.dropbox.com/scl/fi/')&&dbSong.player.url.includes('raw=1')&&dbSong.player.url.includes('rlkey=allow123')&&!dbSong.player.url.includes('dl=0'));
+const drSong=normalizeSong({...seed,source:'Google Drive MP3',player:{type:'gdrive',url:drLink}});
+check('Google Drive individual file converts to preview iframe URL',!!drSong&&drSong.player.url==='https://drive.google.com/file/d/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy/preview');
+check('Dropbox folder and lookalike domains rejected',normalizeSong({...seed,source:'Dropbox MP3',player:{type:'dropbox',url:'https://www.dropbox.com/home/fake.mp3'}})===null&&normalizeSong({...seed,source:'Dropbox MP3',player:{type:'dropbox',url:'https://dropbox.com.evil.example/s/abcd/fake.mp3'}})===null);
+check('Google Drive folder and spoofed host rejected',normalizeSong({...seed,source:'Google Drive MP3',player:{type:'gdrive',url:'https://drive.google.com/drive/folders/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy'}})===null&&normalizeSong({...seed,source:'Google Drive MP3',player:{type:'gdrive',url:'https://drive.google.com.evil.example/file/d/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy/preview'}})===null);
+check('Dropbox and Drive players are rendered without modifying managed MP3 controls',html.includes("else if(p.type==='dropbox')")&&html.includes("else if(p.type==='gdrive')")&&html.includes("else if(p.type==='mp3')"));
+
 const cardSource=match[1].slice(match[1].indexOf('function cardHtml('),match[1].indexOf('function render()'));
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cardHtml=new Function('activeId','escapeHtml','tag',cardSource+';return cardHtml;')(null,escapeHtml,x=>'<span>'+escapeHtml(x)+'</span>');
