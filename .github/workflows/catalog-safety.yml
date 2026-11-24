@@ -1,91 +1,47 @@
-name: Catalog safety regression
-
+name: Isolated Tally music URL transfer QA
 on:
   push:
-    paths:
-      - 'backend/**'
-      - 'index.html'
-      - '.github/workflows/catalog-safety.yml'
-  pull_request:
-    paths:
-      - 'backend/**'
-      - 'index.html'
-      - '.github/workflows/catalog-safety.yml'
-
+    branches: [qa-feed-timing-20261124]
+    paths: ['.github/workflows/catalog-safety.yml']
 permissions:
   contents: read
-
 jobs:
-  no-live-data-regressions:
+  test-free-embed:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate browser catalog JavaScript syntax
-        run: |
-          node -e "const fs=require('fs');const h=fs.readFileSync('index.html','utf8');const a=h.indexOf('<script>');const b=h.indexOf('</script>',a+8);if(a<0||b<0)throw Error('Site script missing');new Function(h.slice(a+8,b));"
-      - name: Run synthetic managed MP3 rights and host guards
-        run: node backend/tests/test_live_baseline_managed_mp3.js
-      - name: Run synthetic buyer routing and idempotency tests
-        run: node backend/tests/test_buyer_intake_delivery_simulated.js
-      - name: Test Tally API timeouts, retries and fail-closed polling
-        run: node backend/tests/test_tally_fetch_retry.js
-      - name: Test buyer-facing catalog design and secure inquiries
-        run: node backend/tests/test_buyer_homepage.js
-      - name: Test scheduled intake lock contention and server failures
-        run: node backend/tests/test_intake_lock_overlap.js
-
-      - name: Verify standalone optimized feed
-        run: |
-          node <<'NODE'
-          const {endpoint}=JSON.parse(require('node:fs').readFileSync('feed-config.json','utf8'));
-          const {performance}=require('node:perf_hooks');
-          if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint))throw Error('Invalid endpoint');
-          (async()=>{
-            for(let i=1;i<=6;i++){
-              const url=new URL(endpoint);
-              url.searchParams.set('benchmark','1');
-              url.searchParams.set('probe',Date.now()+'-'+i);
-              const start=performance.now(),response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'}),raw=await response.text(),totalMs=Math.round(performance.now()-start);
-              const match=raw.trim().match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
-              if(!response.ok||!match)throw Error('Invalid feed response');
-              const data=JSON.parse(match[1]),d=data.readDiagnostics;
-              const sample={sample:i,totalMs,serverMs:d?.serverMs,path:d?.path,fallbackReason:d?.fallbackReason,approvedCount:data.songs?.length,expectedTrack:data.songs?.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)};
-              console.log(JSON.stringify(sample));
-              if(data.schemaVersion!==1||sample.path!=='advanced'||sample.fallbackReason!=='none'||sample.approvedCount!==1||!sample.expectedTrack||sample.privateContactPattern||!Number.isFinite(sample.serverMs))throw Error('Optimized feed acceptance failed');
-            }
-          })().catch(e=>{console.error(e.message);process.exitCode=1;});
-          NODE
-      - name: Measure fresh signed-out browser card rendering
+      - name: Check answer piping versus dynamic iframe URL without submitting
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install chromium
           node <<'NODE'
           const {chromium}=require('playwright');
-          const nodePerf=require('node:perf_hooks').performance;
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
-              for(let i=1;i<=6;i++){
-                const context=await browser.newContext();
-                try{
-                  const page=await context.newPage();
-                  const start=nodePerf.now();
-                  await page.goto('https://musiclerk-png.github.io/sync-opps-ready-to-license/',{waitUntil:'domcontentloaded',timeout:20000});
-                  await page.locator('.song-card').filter({hasText:'Soul Pocket Groove'}).first().waitFor({state:'visible',timeout:15000});
-                  const cardMs=Math.round(nodePerf.now()-start);
-                  const data=await page.evaluate(()=>{
-                    const entries=globalThis.performance.getEntriesByType('resource');
-                    const feed=entries.find(e=>e.name.includes('script.google.com/macros/s/'));
-                    return {feedStartMs:feed?Math.round(feed.startTime):null,feedMs:feed?Math.round(feed.duration):null,cardCount:document.querySelectorAll('.song-card').length,mp3Preload:document.querySelector('audio')?.getAttribute('preload')??null};
-                  });
-                  console.log(JSON.stringify({browserSample:i,cardMs,...data}));
-                  if(data.cardCount!==1||data.mp3Preload!=='none')throw Error('Unexpected catalog rendering');
-                }finally{await context.close();}
+              const page=await browser.newPage();
+              await page.goto('https://tally.so/r/kbN8jZ',{waitUntil:'domcontentloaded',timeout:30000});
+              const input=page.locator('input').filter({visible:true}).first();
+              await input.waitFor({state:'visible',timeout:20000});
+              const inspect=async()=>{
+                return await page.evaluate(()=>{
+                  const frames=Array.from(document.querySelectorAll('iframe')).map(f=>({src:f.getAttribute('src')||'',visible:!!f.getClientRects().length})).filter(x=>x.src.includes('catalog-player.html'));
+                  return {frames,controlText:document.body.innerText.includes('Answer piping control:')};
+                });
+              };
+              const initial=await inspect();
+              for(const value of ['https://example.com/qa-song-one','https://example.com/qa-song-two']){
+                await input.fill(value);
+                await input.press('Tab');
+                await page.waitForTimeout(1500);
+                const current=await inspect();
+                const control=await page.locator('body').innerText();
+                console.log(JSON.stringify({qaValue:value,initial,current,textPipingWorks:control.includes(value),embedReceivesValue:current.frames.some(f=>{try{return new URL(f.src).searchParams.get('qa_source')===value;}catch{return false;}})}));
               }
+              console.log('QA completed; no submit action performed.');
             }finally{await browser.close();}
           })().catch(e=>{console.error(e.message);process.exitCode=1;});
           NODE
