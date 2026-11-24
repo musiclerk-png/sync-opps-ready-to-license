@@ -2,7 +2,7 @@ name: Isolated music link correction safety QA
 on:
   push:
     branches: [qa-music-link-correction-20261124]
-    paths: ['backend/SyncOpps_MusicLinkCorrections_v1.0.gs','backend/tests/test_music_link_corrections.js','.github/workflows/music-link-correction-qa.yml']
+    paths: ['backend/SyncOpps_MusicLinkCorrections_v1.0.gs','backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs','backend/tests/test_music_link_corrections.js','.github/workflows/music-link-correction-qa.yml']
 permissions:
   contents: read
 jobs:
@@ -15,6 +15,22 @@ jobs:
         with:
           node-version: '22'
       - run: node backend/tests/test_music_link_corrections.js
+      - name: Validate actual combined production candidate
+        run: |
+          node -e "const fs=require('fs'),vm=require('vm');new vm.Script(fs.readFileSync('backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs','utf8'));console.log('Combined source syntax PASS')"
+          node <<'NODE'
+          const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+          const code=fs.readFileSync('backend/SyncOpps_Beta_Buyer_Intake_v1.1.gs','utf8');
+          const module=fs.readFileSync('backend/SyncOpps_MusicLinkCorrections_v1.0.gs','utf8');
+          assert.ok(code.includes(module),'Tested correction module unchanged');
+          const c=vm.createContext({console,PropertiesService:{getScriptProperties:()=>({getProperty:()=>null})}});vm.runInContext(code,c);
+          vm.runInContext("soBBProcessOriginalV11_=()=>({acceptedBeta:0,buyerSent:0});",c);
+          const r=vm.runInContext("syncOppsProcessBetaBuyer({triggerUid:'qa'})",c);assert.equal(r.linkCorrections.status,'DISABLED');
+          vm.runInContext("soBBProcessOriginalV11_=()=>({status:'SKIPPED_BUSY'});soLCOnExistingTrigger_=()=>{throw Error('must not run')};",c);
+          assert.equal(vm.runInContext("syncOppsProcessBetaBuyer({triggerUid:'qa'})",c).status,'SKIPPED_BUSY');
+          vm.runInContext("soBBProcessOriginalV11_=()=>({buyerSent:1});",c);const failed=vm.runInContext("syncOppsProcessBetaBuyer({triggerUid:'qa'})",c);assert.equal(failed.buyerSent,1);assert.equal(failed.linkCorrections.status,'ERROR');
+          console.log('PASS: exact tested module, disabled default, original trigger busy handling, correction error isolation');
+          NODE
   published-form-qa:
     runs-on: ubuntu-latest
     timeout-minutes: 5
