@@ -47,11 +47,11 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <div class="card">
 <form id="testForm">
 <div class="grid"><div><label for="platform">Streaming service</label>
-<select id="platform"><option value="auto">Detect from link</option><option value="soundcloud">SoundCloud</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="bandcamp">Bandcamp</option><option value="apple">Apple Music</option><option value="disco">DISCO</option><option value="untitled">Untitled</option><option value="gdrive">Google Drive (preview test)</option><option value="dropbox">Dropbox audio (test)</option><option value="mp3">Direct MP3</option></select></div>
+<select id="platform"><option value="auto">Detect from link</option><option value="soundcloud">SoundCloud</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="bandcamp">Bandcamp</option><option value="apple">Apple Music</option><option value="disco">DISCO</option><option value="untitled">Untitled</option><option value="gdrive">Google Drive audio</option><option value="dropbox">Dropbox audio</option><option value="mp3">Direct MP3</option></select></div>
 <div><label for="scope">Testing requirement</label><div class="notice" id="scope">Must play for a visitor who is not signed in. Verify the title, the actual audio and the owner's permission to offer it for public listening.</div></div></div>
 <label for="source" style="margin-top:19px">Paste a track link or the official iframe embed code</label>
 <textarea id="source" required autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="https://open.spotify.com/track/... or https://youtu.be/... or official <iframe ...> code"></textarea>
-<div class="fine">YouTube, Apple Music and Spotify accept ordinary links. DISCO and Untitled need the official Embed code, not a share/library page. Dropbox audio and Google Drive previews are experimental tests, not yet supported by the live catalog. Some private SoundCloud players cannot be embedded.</div>
+<div class="fine">YouTube, Apple Music and Spotify accept ordinary links. DISCO and Untitled need the official Embed code, not a share/library page. Dropbox audio and individual Google Drive audio files can be considered for the catalog after rights review and successful public playback. Folder links are not supported. Some private SoundCloud players cannot be embedded.</div>
 <div class="actions"><button type="submit">Test this player</button><button type="button" id="clear" class="secondary">Clear</button></div>
 </form>
 <div id="status" role="status" aria-live="polite">No track loaded.</div>
@@ -72,7 +72,7 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <li><strong>Some Spotify and Apple Music embeds only offer limited previews</strong> or require a listener account for full playback. The site must describe what buyers can actually hear.</li>
 <li><strong>Bandcamp requires its official player reference.</strong> A regular track page address is not itself an embedded player.</li>
 <li><strong>DISCO and Untitled share/library pages are not embed URLs.</strong> Use their official iframe code if the owner has enabled embedding.</li>
-<li><strong>Google Drive and Dropbox previews are experimental.</strong> The link must allow unsigned visitors to access the audio. These sources are not supported by the live catalog feed yet and should not be used to publish a song.</li>
+<li><strong>Google Drive and Dropbox must be shared for public listening.</strong> Share an individual audio file, not a folder. For Google Drive, choose Anyone with the link and Viewer. Public playback, membership, ownership and approval checks remain mandatory.</li>
 <li><strong>Spotify albums are not track-specific.</strong> For an individual song listing, supply the individual Spotify track link.</li>
 <li><strong>A direct MP3 must be hosted on a permitted HTTPS source.</strong> The provider must authorize hotlinking and public previews.</li>
 <li>Rights, split-display consent, paid membership, licensing authority and buyer routing are reviewed separately from audio playback.</li>
@@ -176,16 +176,16 @@ function compile(raw,chosen){
   if(host!=='drive.google.com')error('Google Drive needs a drive.google.com file-sharing URL.');
   const m=path.match(/^\/file\/d\/([A-Za-z0-9_-]{15,})\/(?:view|preview)?\/?$/);
   if(!m)error('Use a direct Google Drive file link: drive.google.com/file/d/FILE_ID/view . Folder links are not supported.');
-  dest='https://drive.google.com/file/d/'+m[1]+'/preview';ref=dest;height=280;experimental=true;
-  advisory='Google Drive file preview is experimental and may require Anyone with the link access. It is not yet supported by the live catalog.';
+  dest='https://drive.google.com/file/d/'+m[1]+'/preview';ref=dest;height=280;
+  advisory='Google Drive audio must be shared with Anyone with the link (Viewer). Confirm the individual preview plays without signing in before requesting publication.';
  }else if(kind==='dropbox'){
   if(!['dropbox.com','www.dropbox.com'].includes(host)||!/^\/(?:s\/|scl\/fi\/)/.test(path))
    error('Use a Dropbox shared audio-file URL, not a folder or general page.');
-  if(!/\.(mp3|wav|m4a|aac|ogg)$/i.test(path))error('Dropbox preview tests require a directly shared .mp3, .wav, .m4a, .aac or .ogg audio file.');
+  if(!/\.(mp3|wav|m4a|aac|ogg)$/i.test(path))error('Dropbox audio requires an individual shared .mp3, .wav, .m4a, .aac or .ogg file.');
   const clean=new URL(u.href);
   clean.searchParams.delete('dl');clean.searchParams.set('raw','1');
-  dest=clean.href;ref=dest;tag='audio';experimental=true;
-  advisory='Dropbox raw rendering is experimental and may redirect or be blocked. The raw link is not yet supported by the live catalog.';
+  dest=clean.href;ref=dest;tag='audio';
+  advisory='Dropbox audio links must allow unsigned visitors to play the recording. Raw file playback can vary with sharing settings and Dropbox delivery limits.';
  }else if(kind==='mp3'){
   if(!/\.mp3$/i.test(path))error('A direct MP3 needs an HTTPS file URL with a .mp3 path.');
   dest=u.href;ref=dest;tag='audio';
