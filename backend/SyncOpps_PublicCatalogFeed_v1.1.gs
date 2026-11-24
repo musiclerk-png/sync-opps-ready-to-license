@@ -26,6 +26,9 @@ const SO_PUBLIC_FEED_V1 = Object.freeze({
   version: 1
 });
 
+// The existing Sheets REST API authorization is unavailable in production.
+// Default directly to fresh SpreadsheetApp reads; enable only after proven authorization.
+let SO_PUBLIC_FEED_BATCH_ENABLED_V12=false;
 let SO_PUBLIC_FEED_READ_PATH_V12='none';
 let SO_PUBLIC_FEED_READ_ERROR_V12='none';
 function doGet(e) {
@@ -182,6 +185,10 @@ function soPublicTablesV12_(id) {
     SO_PUBLIC_FEED_V1.writerTab,SO_PUBLIC_FEED_V1.publishingTab,
     SO_PUBLIC_FEED_V1.masterTab
   ];
+  if(!SO_PUBLIC_FEED_BATCH_ENABLED_V12) {
+    SO_PUBLIC_FEED_READ_ERROR_V12='BATCH_DISABLED';
+    return soPublicLegacyTablesV12_(id,names);
+  }
   try {
     const ranges=names.map(function(name) {
       return '&ranges='+encodeURIComponent("'"+name.replace(/'/g,"''")+"'");
@@ -226,12 +233,15 @@ function soPublicTablesV12_(id) {
     // Authorization, API enablement, quota and malformed response errors must
     // retain the old source-of-truth checks, never a stale catalog snapshot.
     console.warn('Batch read unavailable. Using seven current spreadsheet reads.');
-    const book=SpreadsheetApp.openById(id);
-    const tables=Object.create(null);
-    names.forEach(function(name){tables[name]=soPublicTableV1_(book,name);});
-    SO_PUBLIC_FEED_READ_PATH_V12='legacy';
-    return tables;
+    return soPublicLegacyTablesV12_(id,names);
   }
+}
+function soPublicLegacyTablesV12_(id,names) {
+  const book=SpreadsheetApp.openById(id);
+  const tables=Object.create(null);
+  names.forEach(function(name){tables[name]=soPublicTableV1_(book,name);});
+  SO_PUBLIC_FEED_READ_PATH_V12='legacy';
+  return tables;
 }
 function soPublicTableGridV12_(grid,title) {
   if(!Array.isArray(grid)||!grid.length||!Array.isArray(grid[0]))
