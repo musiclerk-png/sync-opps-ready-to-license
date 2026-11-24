@@ -37,3 +37,32 @@ jobs:
         run: node backend/tests/test_buyer_homepage.js
       - name: Test scheduled intake lock contention and server failures
         run: node backend/tests/test_intake_lock_overlap.js
+
+      - name: Read-only production feed timing sample
+        run: |
+          node <<'NODE'
+          const {performance}=require('node:perf_hooks');
+          const fs=require('node:fs');
+          const config=JSON.parse(fs.readFileSync('feed-config.json','utf8'));
+          const endpoint=config.endpoint;
+          if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint)) throw Error('Unexpected endpoint');
+          (async()=>{
+            for(let i=1;i<=3;i++){
+              const url=new URL(endpoint);
+              url.searchParams.set('benchmark','1');
+              url.searchParams.set('probe',Date.now()+'-'+i);
+              const start=performance.now();
+              try{
+                const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'});
+                const headersMs=Math.round(performance.now()-start);
+                const raw=await response.text();
+                const totalMs=Math.round(performance.now()-start);
+                const match=raw.trim().match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
+                if(!response.ok || !match) throw Error('Unexpected public response: HTTP '+response.status);
+                const data=JSON.parse(match[1]),d=data.readDiagnostics;
+                if(data.schemaVersion!==1 || !Array.isArray(data.songs) || !d || !Number.isFinite(d.serverMs)) throw Error('Invalid benchmark schema');
+                console.log(JSON.stringify({sample:i,http:response.status,headersMs,totalMs,serverMs:d.serverMs,path:d.path,fallbackReason:d.fallbackReason,approvedCount:data.songs.length,expectedTrack:data.songs.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)}));
+              }catch(e){console.log(JSON.stringify({sample:i,error:String(e.message),elapsedMs:Math.round(performance.now()-start)}));}
+            }
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
