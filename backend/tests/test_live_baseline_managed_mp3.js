@@ -108,6 +108,14 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
    assert.equal(opts.followRedirects,false);
    return {getResponseCode:()=>200,getContentText:()=>JSON.stringify(formattedResponse())};
  }};
+ const direct=JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx)));
+ assert.deepEqual(direct,baseline,'Default direct reader preserves the approved payload');
+ assert.equal(requests,0,'Production default must not call unavailable Sheets REST API');
+ db.Songs[0]['Catalog Status']='Withdrawn';
+ assert.equal(vm.runInContext('soPublicSnapshotV1_()',pctx).songs.length,0,'Direct reader still suppresses withdrawals');
+ assert.equal(requests,0,'Withdrawn track check must not invoke REST');
+ db=structuredClone(fixture());
+ vm.runInContext('SO_PUBLIC_FEED_BATCH_ENABLED_V12=true',pctx);
  const batched=JSON.parse(JSON.stringify(vm.runInContext('soPublicSnapshotV1_()',pctx)));
  assert.deepEqual(batched,baseline,'Batch read must match legacy public payload including ownership and buyer routing');
  assert.equal(requests,1,'One API read must replace seven individual reads');
@@ -167,6 +175,12 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
    JSON.stringify({error:{details:[{reason:'ACCESS_TOKEN_SCOPE_INSUFFICIENT'}]}})});
  const scopeProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
  assert.equal(scopeProbe.readDiagnostics.fallbackReason,'OAUTH_SCOPE');
+ vm.runInContext('SO_PUBLIC_FEED_BATCH_ENABLED_V12=false',pctx);
+ pctx.UrlFetchApp.fetch=()=>{throw Error('Default must never call REST');};
+ const directProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(directProbe.readDiagnostics.path,'legacy');
+ assert.equal(directProbe.readDiagnostics.fallbackReason,'BATCH_DISABLED');
+ assert.deepEqual(directProbe.songs,baseline.songs);
  delete pctx.ScriptApp;
  delete pctx.UrlFetchApp;
  console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
