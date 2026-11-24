@@ -38,34 +38,54 @@ jobs:
       - name: Test scheduled intake lock contention and server failures
         run: node backend/tests/test_intake_lock_overlap.js
 
-      - name: Six matched advanced Sheets comparisons
+      - name: Verify standalone optimized feed
         run: |
           node <<'NODE'
-          const {performance}=require('node:perf_hooks');
           const {endpoint}=JSON.parse(require('node:fs').readFileSync('feed-config.json','utf8'));
+          const {performance}=require('node:perf_hooks');
           if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint))throw Error('Invalid endpoint');
-          const median=a=>{const b=[...a].sort((x,y)=>x-y);return (b[2]+b[3])/2;};
           (async()=>{
-            const samples=[];
             for(let i=1;i<=6;i++){
               const url=new URL(endpoint);
               url.searchParams.set('benchmark','1');
-              url.searchParams.set('compare','advanced');
               url.searchParams.set('probe',Date.now()+'-'+i);
-              const start=performance.now();
-              const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'});
-              const raw=await response.text();
-              const elapsedMs=Math.round(performance.now()-start);
+              const start=performance.now(),response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'}),raw=await response.text(),totalMs=Math.round(performance.now()-start);
               const match=raw.trim().match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
-              if(!response.ok||!match)throw Error('Public feed response invalid: HTTP '+response.status);
-              const data=JSON.parse(match[1]),d=data.readDiagnostics,c=d?.advancedComparison;
-              const sample={sample:i,http:response.status,elapsedMs,legacyMs:d?.serverMs,advancedMs:c?.serverMs,status:c?.status??'MISSING',reason:c?.reason??null,parity:c?.parity===true,legacyPath:d?.path,legacyTablesMs:d?.stages?.tablesMs,advancedTablesMs:c?.stages?.tablesMs,approvedCount:data.songs?.length,expectedTrack:data.songs?.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)};
+              if(!response.ok||!match)throw Error('Invalid feed response');
+              const data=JSON.parse(match[1]),d=data.readDiagnostics;
+              const sample={sample:i,totalMs,serverMs:d?.serverMs,path:d?.path,fallbackReason:d?.fallbackReason,approvedCount:data.songs?.length,expectedTrack:data.songs?.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)};
               console.log(JSON.stringify(sample));
-              if(data.schemaVersion!==1||!Array.isArray(data.songs)||sample.approvedCount!==1||!sample.expectedTrack||sample.privateContactPattern||sample.legacyPath!=='legacy'||sample.status!=='OK'||!sample.parity||!Number.isFinite(sample.legacyMs)||!Number.isFinite(sample.advancedMs))throw Error('Comparison acceptance failed; stop without changing normal reader');
-              samples.push(sample);
+              if(data.schemaVersion!==1||sample.path!=='advanced'||sample.fallbackReason!=='none'||sample.approvedCount!==1||!sample.expectedTrack||sample.privateContactPattern||!Number.isFinite(sample.serverMs))throw Error('Optimized feed acceptance failed');
             }
-            const legacyMedianMs=median(samples.map(s=>s.legacyMs)),advancedMedianMs=median(samples.map(s=>s.advancedMs)),savingMs=legacyMedianMs-advancedMedianMs,savingPct=100*savingMs/legacyMedianMs;
-            const pairedMedianSavingMs=median(samples.map(s=>s.legacyMs-s.advancedMs));
-            console.log(JSON.stringify({summary:true,valid:samples.length,legacyMedianMs,advancedMedianMs,savingMs,savingPct,pairedMedianSavingMs,passes:savingMs>=750&&savingPct>=25&&pairedMedianSavingMs>=750}));
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
+      - name: Measure fresh signed-out browser card rendering
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install chromium
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          const {performance}=require('node:perf_hooks');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try{
+              for(let i=1;i<=6;i++){
+                const context=await browser.newContext();
+                try{
+                  const page=await context.newPage();
+                  const start=performance.now();
+                  await page.goto('https://musiclerk-png.github.io/sync-opps-ready-to-license/',{waitUntil:'domcontentloaded',timeout:20000});
+                  await page.locator('.song-card').filter({hasText:'Soul Pocket Groove'}).first().waitFor({state:'visible',timeout:15000});
+                  const cardMs=Math.round(performance.now()-start);
+                  const data=await page.evaluate(()=>{
+                    const entries=performance.getEntriesByType('resource');
+                    const feed=entries.find(e=>e.name.includes('script.google.com/macros/s/'));
+                    return {feedStartMs:feed?Math.round(feed.startTime):null,feedMs:feed?Math.round(feed.duration):null,cardCount:document.querySelectorAll('.song-card').length,mp3Preload:document.querySelector('audio')?.getAttribute('preload')??null};
+                  });
+                  console.log(JSON.stringify({browserSample:i,cardMs,...data}));
+                  if(data.cardCount!==1||data.mp3Preload!=='none')throw Error('Unexpected catalog rendering');
+                }finally{await context.close();}
+              }
+            }finally{await browser.close();}
           })().catch(e=>{console.error(e.message);process.exitCode=1;});
           NODE
