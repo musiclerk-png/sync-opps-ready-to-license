@@ -51,7 +51,7 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <div><label for="scope">Testing requirement</label><div class="notice" id="scope">Must play for a visitor who is not signed in. Verify the title, the actual audio and the owner's permission to offer it for public listening.</div></div></div>
 <label for="source" style="margin-top:19px">Paste a track link or the official iframe embed code</label>
 <textarea id="source" required autocapitalize="off" spellcheck="false" autocomplete="off" placeholder="https://open.spotify.com/track/... or https://youtu.be/... or official <iframe ...> code"></textarea>
-<div class="fine">YouTube, Apple Music and Spotify accept ordinary links. DISCO and Untitled need the official Embed code, not a share/library page. Dropbox audio and individual Google Drive audio files can be considered for the catalog after rights review and successful public playback. Folder links are not supported. Some private SoundCloud players cannot be embedded.</div>
+<div class="fine">YouTube, Apple Music and Spotify accept ordinary links. For DISCO, use the official Track or Playlist Embed code or the iframe's src URL, not a Share link. Untitled needs its official Embed code. Dropbox audio and individual Google Drive audio files can be considered for the catalog after rights review and successful public playback. Folder links are not supported. Some private SoundCloud players cannot be embedded.</div>
 <div class="actions"><button type="submit">Test this player</button><button type="button" id="clear" class="secondary">Clear</button></div>
 </form>
 <div id="status" role="status" aria-live="polite">No track loaded.</div>
@@ -71,7 +71,7 @@ footer{border-top:1px solid var(--line);font-size:12px;color:var(--muted);paddin
 <li><strong>Unlisted does not mean secret after publication.</strong> Anyone viewing the catalog may be able to inspect or share the embedded source link.</li>
 <li><strong>Some Spotify and Apple Music embeds only offer limited previews</strong> or require a listener account for full playback. The site must describe what buyers can actually hear.</li>
 <li><strong>Bandcamp requires its official player reference.</strong> A regular track page address is not itself an embedded player.</li>
-<li><strong>DISCO and Untitled share/library pages are not embed URLs.</strong> Use their official iframe code if the owner has enabled embedding.</li>
+<li><strong>DISCO and Untitled share/library pages are not embed URLs.</strong> For DISCO, copy the Embed code or its iframe src URL. Disable downloads if you only authorize streaming. For Untitled, use its official iframe code.</li>
 <li><strong>Google Drive and Dropbox must be shared for public listening.</strong> Share an individual audio file, not a folder. For Google Drive, choose Anyone with the link and Viewer. Public playback, membership, ownership and approval checks remain mandatory.</li>
 <li><strong>Spotify albums are not track-specific.</strong> For an individual song listing, supply the individual Spotify track link.</li>
 <li><strong>A direct MP3 must be hosted on a permitted HTTPS source.</strong> The provider must authorize hotlinking and public previews.</li>
@@ -163,10 +163,10 @@ function compile(raw,chosen){
  }else if(kind==='disco'){
   if(host==='s.disco.ac')
    error('This is a DISCO Share link, not an embed player. In DISCO, open the Track menu → Share → Embed → Copy embed code.');
-  if(!parsed.isIframe||!host.endsWith('.disco.ac')||!/^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+/.test(path))
-   error('DISCO requires the official iframe from Track or Playlist → Share → Embed. Do not paste the ordinary DISCO Share URL.');
-  dest=u.href;ref=dest;height=285;experimental=true;
-  advisory='DISCO official embed can be tested here. Production player allowlisting requires a separate backend update before publishing.';
+  if(host==='s.disco.ac'||!(/^(?:[a-z0-9-]+\.)*disco\.ac$/i.test(host))||!/^\/e\/(?:t|p|a)\/[A-Za-z0-9_-]+\/?$/i.test(path))
+   error('DISCO requires the official Track or Playlist → Share → Embed iframe code or its src URL, not a Share URL.');
+  dest=u.href;ref=dest;height=285;
+  advisory='Official DISCO embedded player reference recognized. Use a real, authorized track to verify playback for a signed-out visitor before requesting publication. Disable downloads in DISCO unless explicitly permitted.';
  }else if(kind==='untitled'){
   if(!parsed.isIframe||!['untitled.stream','web.untitled.stream','embed.untitled.stream'].includes(host)||/^\/library\//.test(path))
    error('Untitled library links are not embeddable. Obtain the official iframe code from the track’s Embed option, if available.');
