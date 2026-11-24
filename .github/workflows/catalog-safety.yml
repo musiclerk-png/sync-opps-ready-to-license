@@ -1,4 +1,4 @@
-name: Isolated real media and layout QA
+name: Published optional tester smoke QA
 on:
   push:
     branches: [qa-feed-timing-20261124]
@@ -21,7 +21,7 @@ jobs:
           node <<'NODE'
           const {chromium}=require('playwright'),fs=require('node:fs'),assert=require('node:assert/strict');
           const html=fs.readFileSync('qa/optional-link-tester-isolated.html','utf8');
-          const qa='https://tally.so/r/kbN8jZ';
+          const qa='https://tally.so/r/peo0gV';
           const homepage='https://musiclerk-png.github.io/sync-opps-ready-to-license/';
           const sample='https://soundcloud.com/forss/flickermood';
           (async()=>{
@@ -37,12 +37,21 @@ jobs:
               await publicPage.close();
               for(const mobile of [false,true]){
                 const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:900},isMobile:mobile,hasTouch:mobile});
-                await context.route('**/qa/catalog-player.html?qa_control=static',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
+                // No response interception: published form and component.
                 const page=await context.newPage();
                 await page.goto(qa,{waitUntil:'domcontentloaded',timeout:30000});
-                const input=page.locator('input').filter({visible:true}).first();
-                await input.waitFor({state:'visible',timeout:20000});
-                const outer=page.locator('iframe[src*="qa_control=static"]'),frame=page.frameLocator('iframe[src*="qa_control=static"]');
+                await page.getByPlaceholder('Name shown in catalog').fill('QA browser test');
+                await page.getByPlaceholder('Email associated with your paid Patreon membership').fill('qa@example.com');
+                await page.getByPlaceholder('Name buyers should address').fill('QA browser test');
+                await page.getByPlaceholder('Email where licensing inquiries should be routed').fill('qa@example.com');
+                // Only advance from first page; never submit the final form.
+                const next=page.getByRole('button',{name:/next|continue/i}).first();
+                await next.click();
+                await page.getByText('Song 1: Streaming Platform',{exact:true}).waitFor({state:'visible',timeout:20000});
+                const input=page.getByPlaceholder('https://...',{exact:true}).filter({visible:true}).first();
+                const outer=page.locator('iframe[src*="tools/music-link-tester.html"]').filter({visible:true}).first();
+                await outer.waitFor({state:'visible',timeout:20000});
+                const frame=outer.contentFrame();
                 await frame.locator('#source').waitFor({state:'visible',timeout:20000});
                 const original=page.url();
                 const initial=await frame.locator('body').evaluate(()=>({w:innerWidth,h:innerHeight,scrollH:document.documentElement.scrollHeight,buttonBottom:document.querySelector('#test').getBoundingClientRect().bottom}));
