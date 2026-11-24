@@ -8,6 +8,8 @@ const sid='SONG-ABCD12345678',mid='MEM-TEST12345678';
 let db={};
 const pctx=vm.createContext({PropertiesService:{getScriptProperties:()=>({getProperty:()=> 'TEST_SHEET_ID_STRING_LONG_ENOUGH_TO_PASS'})},SpreadsheetApp:{openById:()=>({getSheetByName:name=>db[name]?({getDataRange:()=>({getDisplayValues:()=>[Object.keys(db[name][0]||{}),...db[name].map(x=>Object.values(x))]})}):null})},console,Date,encodeURIComponent,ContentService:{MimeType:{JAVASCRIPT:'javascript'},createTextOutput:txt=>({txt,setMimeType(){return this;}})}});
 vm.runInContext(publicCode,pctx);
+assert.equal(vm.runInContext('SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13',pctx),true,'Proven Advanced Sheets is production default');
+vm.runInContext('SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13=false',pctx); // Exercise original fresh reader and historical REST tests first.
 const bctx=vm.createContext({console,Date});vm.runInContext(buyerCode,bctx);
 function fixture(source='Managed MP3 Preview'){
  return {
@@ -243,6 +245,45 @@ test('one-stop unverified suppresses both','Managed MP3 Preview',d=>d.Songs[0]['
  assert.equal(missing.readDiagnostics.advancedComparison.reason,'SERVICE_UNAVAILABLE');
  assert.deepEqual(missing.songs,baseline.songs);
  console.log('PASS advanced Sheets opt-in only, identical live gates, mismatch and failure isolation');
+ // Production default: one fresh advanced call with the same rights gates.
+ vm.runInContext('SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13=true',pctx);
+ db=structuredClone(fixture());
+ let liveAdvancedCalls=0;
+ const originalOpen=pctx.SpreadsheetApp.openById;
+ let legacyOpens=0;
+ pctx.SpreadsheetApp.openById=(...args)=>{legacyOpens++;return originalOpen(...args);};
+ pctx.Sheets={Spreadsheets:{Values:{batchGet:()=>{liveAdvancedCalls++;return formattedResponse();}}}};
+ const newNormal=parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt);
+ assert.deepEqual(newNormal,baseline);
+ assert.equal(liveAdvancedCalls,1);
+ assert.equal(legacyOpens,0,'Successful advanced read avoids separate legacy reads');
+ const newProbe=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(newProbe.readDiagnostics.path,'advanced');
+ assert.equal(newProbe.readDiagnostics.fallbackReason,'none');
+ assert.equal(liveAdvancedCalls,2);
+ assert.equal(legacyOpens,0);
+ for(const [tab,key,value] of [['Songs','Catalog Status','Withdrawn'],['Songs','Catalog Status','Paused'],['Songs','Review Status','Pending'],['Songs','Preview Host Authorization (PRIVATE)','Do Not Host'],['Members','Membership Status','Unverified'],['Beta 40','Invite Status','Pending'],['Writer Splits','Approved for Public Display','No'],['Publishing Splits','Approved for Public Display','No'],['Master Splits','Approved for Public Display','No']]){
+   db=structuredClone(fixture()); db[tab][0][key]=value;
+   assert.equal(parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt).songs.length,0,'Advanced default must suppress '+tab+' '+key);
+ }
+ assert.equal(legacyOpens,0);
+ db=structuredClone(fixture());
+ pctx.Sheets.Spreadsheets.Values.batchGet=()=>{throw Error('private API error');};
+ const fallback=parseJsonp(vm.runInContext('doGet({parameter:{benchmark:"1"}})',pctx).txt);
+ assert.equal(fallback.readDiagnostics.path,'legacy');
+ assert.equal(fallback.readDiagnostics.fallbackReason,'ADVANCED_UNAVAILABLE');
+ assert.deepEqual(fallback.songs,baseline.songs);
+ assert.equal(legacyOpens,1);
+ assert(!JSON.stringify(fallback).includes('private API error'));
+ db.Songs[0]['Catalog Status']='Withdrawn';
+ assert.equal(parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt).songs.length,0,'Fallback must reread withdrawal');
+ pctx.SpreadsheetApp.openById=()=>{throw Error('synthetic both readers failed');};
+ assert.equal(parseJsonp(vm.runInContext('doGet({parameter:{}})',pctx).txt).songs.length,0,'Both readers failing returns no songs');
+ pctx.SpreadsheetApp.openById=originalOpen;
+ delete pctx.Sheets;
+ vm.runInContext('SO_PUBLIC_FEED_ADVANCED_DEFAULT_V13=false',pctx);
+ console.log('PASS advanced default, fresh fallback, rights and withdrawal, both readers fail closed');
+
  delete pctx.ScriptApp;
  delete pctx.UrlFetchApp;
  console.log('PASS batchGet revoked rights, withdrawal, 403, incomplete, order and transport fail-closed');
