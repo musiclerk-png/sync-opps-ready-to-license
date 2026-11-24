@@ -29,7 +29,7 @@ function run(){
  return {feed,buyer};
 }
 let count=0;
-function test(name,kind,mutate,allow){db=structuredClone(fixture(kind));if(mutate)mutate(db);const {feed,buyer}=run();assert.equal(feed.songs.length,allow?1:0,'Feed '+name);assert.equal(buyer.allowed,allow,'Buyer '+name+': '+buyer.reason);if(allow){assert(!JSON.stringify(feed).includes('@private.test'),'Private email exposed');assert.equal(feed.songs[0].player.type,kind==='Managed MP3 Preview'?'mp3':kind.toLowerCase().includes('dropbox')?'dropbox':kind.toLowerCase().includes('google drive')?'gdrive':'soundcloud');}console.log('PASS '+name);count++;}
+function test(name,kind,mutate,allow){db=structuredClone(fixture(kind));if(mutate)mutate(db);const {feed,buyer}=run();assert.equal(feed.songs.length,allow?1:0,'Feed '+name);assert.equal(buyer.allowed,allow,'Buyer '+name+': '+buyer.reason);if(allow){assert(!JSON.stringify(feed).includes('@private.test'),'Private email exposed');assert.equal(feed.songs[0].player.type,kind==='Managed MP3 Preview'?'mp3':kind.toLowerCase().includes('dropbox')?'dropbox':kind.toLowerCase().includes('google drive')?'gdrive':kind.toLowerCase().includes('disco')?'disco':'soundcloud');}console.log('PASS '+name);count++;}
 test('approved managed MP3 + exact active Cloudinary ID','Managed MP3 Preview',null,true);
 test('pending hosting authorization', 'Managed MP3 Preview',d=>d.Songs[0]['Preview Host Authorization (PRIVATE)']='Pending',false);
 test('deleted host status not approved','Managed MP3 Preview',d=>d.Songs[0]['Preview Host Authorization (PRIVATE)']='Do Not Host',false);
@@ -46,6 +46,17 @@ test('Cloudinary wrong delivery path refused','Managed MP3 Preview',d=>d.Songs[0
 test('Cloudinary malformed unversioned path refused','Managed MP3 Preview',d=>d.Songs[0]['Authorized Embed Reference']='https://res.cloudinary.com/testcloud/video/upload/sync_opps_catalog_previews/preview_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3',false);
 test('staging switches managed source to SoundCloud','Managed MP3 Preview',d=>{d['Public Staging'][0]['Music Source']='SoundCloud';d['Public Staging'][0]['Stream URL / Embed ID']='https://soundcloud.com/test/track';},false);
 test('approved normal SoundCloud unaffected','SoundCloud',null,true);
+const officialDisco='https://record-label.disco.ac/e/t/56689167?download=false&artwork=true&theme=white';
+function discoLink(d,url){d['Public Staging'][0]['Stream URL / Embed ID']=url;d.Songs[0]['Stream URL']=url;}
+test('official DISCO creator-subdomain iframe src allowed after all rights gates','DISCO',d=>discoLink(d,officialDisco),true);
+test('official DISCO paused track removed from public feed and buyer route','DISCO',d=>{discoLink(d,officialDisco);d.Songs[0]['Catalog Status']='Paused';},false);
+test('official DISCO withdrawn track removed from public feed and buyer route','DISCO',d=>{discoLink(d,officialDisco);d.Songs[0]['Catalog Status']='Withdrawn';},false);
+test('official DISCO rights approval still required','DISCO',d=>{discoLink(d,officialDisco);d['Writer Splits'][0]['Approved for Public Display']='No';},false);
+test('DISCO short Share URL is not accepted as embedded player','DISCO',d=>discoLink(d,'https://s.disco.ac/abcDEF12'),false);
+test('DISCO share page is not accepted as an iframe','DISCO',d=>discoLink(d,'https://record-label.disco.ac/play/56689167'),false);
+test('DISCO untrusted lookalike hostname blocked','DISCO',d=>discoLink(d,'https://record-label.disco.ac.evil.example/e/t/56689167'),false);
+test('DISCO unrelated path blocked','DISCO',d=>discoLink(d,'https://record-label.disco.ac/api/external_api/v1/track/56689167'),false);
+
 const dropboxLink='https://www.dropbox.com/scl/fi/abcDEFG123456/owner-authorized-song.wav?rlkey=real-link-key&dl=0';
 const driveLink='https://drive.google.com/file/d/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy/preview';
 function previewLink(d,url){d['Public Staging'][0]['Stream URL / Embed ID']=url;d.Songs[0]['Stream URL']=url;}
