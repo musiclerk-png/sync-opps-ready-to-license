@@ -335,12 +335,14 @@ function soPublicPlayerV1_(source,url) {
     return {type:'disco',url:url};
   // Owner-approved public audio file links. Keep files on their own hosts and
   // require individual recordings, never folders or general share pages.
-  if(src.indexOf('dropbox')>=0 && (host==='dropbox.com'||host==='www.dropbox.com') &&
-     /^https:\/\/(?:www\.)?dropbox\.com\/(?:s|scl\/fi)\/[A-Za-z0-9_-]+\/[^/?#]+\.(?:mp3|wav|m4a|aac|ogg)(?:[?#]|$)/i.test(url))
-    return {type:'dropbox',url:url};
-  if(src.indexOf('google drive')>=0 && host==='drive.google.com' &&
-     /^https:\/\/drive\.google\.com\/file\/d\/[A-Za-z0-9_-]{15,}\/(?:view|preview)?\/?(?:[?#]|$)/i.test(url))
-    return {type:'gdrive',url:url};
+  if(src.indexOf('dropbox')>=0)
+    return (host==='dropbox.com'||host==='www.dropbox.com') &&
+      /^https:\/\/(?:www\.)?dropbox\.com\/(?:s|scl\/fi)\/[A-Za-z0-9_-]+\/[^/?#]+\.(?:mp3|wav|m4a|aac|ogg)(?:[?#]|$)/i.test(url)
+      ? {type:'dropbox',url:url} : null;
+  if(src.indexOf('google drive')>=0)
+    return host==='drive.google.com' &&
+      /^https:\/\/drive\.google\.com\/file\/d\/[A-Za-z0-9_-]{15,}\/(?:view|preview)?\/?(?:[?#]|$)/i.test(url)
+      ? {type:'gdrive',url:url} : null;
   if((src.indexOf('mp3')>=0||src.indexOf('audio')>=0) && /\.mp3(?:[?#]|$)/i.test(url))
     return {type:'mp3',url:url};
   return null;
