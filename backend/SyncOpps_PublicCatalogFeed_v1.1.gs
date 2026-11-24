@@ -44,6 +44,24 @@ function doGet(e) {
   if(timing)
     data.readDiagnostics={path:SO_PUBLIC_FEED_READ_PATH_V12,serverMs:Date.now()-startedAt,
       fallbackReason:SO_PUBLIC_FEED_READ_ERROR_V12,stages:timing};
+  // Only the explicit comparison probe exercises the candidate reader. The
+  // response always contains the original fresh legacy payload, never candidate data.
+  if(timing && e.parameter.compare==='advanced') {
+    const compareStart=Date.now(), candidateTiming={};
+    let comparison={status:'FAILED',serverMs:0,parity:false};
+    try {
+      const candidate=soPublicSnapshotV1_(candidateTiming,'advanced');
+      comparison={status:'OK',serverMs:Date.now()-compareStart,parity:
+        data.readDiagnostics.path==='legacy' && JSON.stringify({schemaVersion:data.schemaVersion,songs:data.songs})===JSON.stringify(candidate),stages:candidateTiming};
+    } catch(err) {
+      const msg=String(err&&err.message||'');
+      comparison.reason=/not defined|service unavailable/i.test(msg)?'SERVICE_UNAVAILABLE':
+        /auth|permission|scope|access denied/i.test(msg)?'AUTHORIZATION_REQUIRED':
+        /Batch read|Required header|Duplicate column|Malformed row/i.test(msg)?'INVALID_RESPONSE':'OTHER';
+      comparison.serverMs=Date.now()-compareStart;
+    }
+    data.readDiagnostics.advancedComparison=comparison;
+  }
   const json = JSON.stringify(data)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026')
@@ -61,7 +79,7 @@ function syncOppsPublicFeedDryRun() {
     note:'This only counts records passing ALL publication gates.'}));
 }
 
-function soPublicSnapshotV1_(timing) {
+function soPublicSnapshotV1_(timing,reader) {
   const propertyStart=timing?Date.now():0;
   const id = PropertiesService.getScriptProperties().getProperty(SO_PUBLIC_FEED_V1.property);
   if (!id || !/^[A-Za-z0-9_-]{25,100}$/.test(id)) throw Error('Private spreadsheet setting is missing or invalid.');
@@ -71,7 +89,7 @@ function soPublicSnapshotV1_(timing) {
   // Never use a cached public snapshot or skip a permission gate.
   if(timing)timing.propertyMs=Date.now()-propertyStart;
   const tablesStart=timing?Date.now():0;
-  const tables=soPublicTablesV12_(id,timing);
+  const tables=soPublicTablesV12_(id,timing,reader);
   if(timing)timing.tablesMs=Date.now()-tablesStart;
   const gateStart=timing?Date.now():0;
   const staging=tables[SO_PUBLIC_FEED_V1.stagingTab];
@@ -185,13 +203,20 @@ function soPublicSnapshotV1_(timing) {
 // v1.2 read optimization: seven fresh tab ranges in a single HTTP call.
 // FORMATTED_VALUE preserves the displayed strings required by approval rules.
 // An unavailable API never reuses previously approved, possibly withdrawn data.
-function soPublicTablesV12_(id,timing) {
+function soPublicTablesV12_(id,timing,reader) {
   const names=[
     SO_PUBLIC_FEED_V1.stagingTab,SO_PUBLIC_FEED_V1.songTab,
     SO_PUBLIC_FEED_V1.memberTab,SO_PUBLIC_FEED_V1.betaTab,
     SO_PUBLIC_FEED_V1.writerTab,SO_PUBLIC_FEED_V1.publishingTab,
     SO_PUBLIC_FEED_V1.masterTab
   ];
+  if(reader==='advanced') {
+    const parsed=Sheets.Spreadsheets.Values.batchGet(id,{
+      ranges:names.map(function(name){return "'"+name.replace(/'/g,"''")+"'";}),
+      valueRenderOption:'FORMATTED_VALUE',majorDimension:'ROWS'
+    });
+    return soPublicParseBatchV12_(parsed,names);
+  }
   if(!SO_PUBLIC_FEED_BATCH_ENABLED_V12) {
     SO_PUBLIC_FEED_READ_ERROR_V12='BATCH_DISABLED';
     return soPublicLegacyTablesV12_(id,names,timing);
@@ -215,19 +240,7 @@ function soPublicTablesV12_(id,timing) {
       throw Error('Batch read '+reason);
     }
     const parsed=JSON.parse(res.getContentText());
-    if(!parsed || !Array.isArray(parsed.valueRanges) ||
-       parsed.valueRanges.length!==names.length) throw Error('Batch read incomplete');
-    const tables=Object.create(null);
-    names.forEach(function(name,i) {
-      const valueRange=parsed.valueRanges[i];
-      if(!valueRange || !valueRange.range ||
-         (valueRange.majorDimension && valueRange.majorDimension!=='ROWS'))
-        throw Error('Batch read invalid range');
-      const returnedName=String(valueRange.range).split('!')[0]
-        .replace(/^'|'$/g,'').replace(/''/g,"'");
-      if(returnedName!==name) throw Error('Batch read wrong tab');
-      tables[name]=soPublicTableGridV12_(valueRange.values,name);
-    });
+    const tables=soPublicParseBatchV12_(parsed,names);
     SO_PUBLIC_FEED_READ_PATH_V12='batch';
     return tables;
   }catch(err) {
@@ -242,6 +255,22 @@ function soPublicTablesV12_(id,timing) {
     console.warn('Batch read unavailable. Using seven current spreadsheet reads.');
     return soPublicLegacyTablesV12_(id,names,timing);
   }
+}
+function soPublicParseBatchV12_(parsed,names) {
+  if(!parsed || !Array.isArray(parsed.valueRanges) ||
+     parsed.valueRanges.length!==names.length) throw Error('Batch read incomplete');
+  const tables=Object.create(null);
+  names.forEach(function(name,i) {
+    const valueRange=parsed.valueRanges[i];
+    if(!valueRange || !valueRange.range ||
+       (valueRange.majorDimension && valueRange.majorDimension!=='ROWS'))
+      throw Error('Batch read invalid range');
+    const returnedName=String(valueRange.range).split('!')[0]
+      .replace(/^'|'$/g,'').replace(/''/g,"'");
+    if(returnedName!==name) throw Error('Batch read wrong tab');
+    tables[name]=soPublicTableGridV12_(valueRange.values,name);
+  });
+  return tables;
 }
 function soPublicLegacyTablesV12_(id,names,timing) {
   const openStart=timing?Date.now():0;
