@@ -886,6 +886,12 @@ function syncOppsProcessBetaBuyer(e){
     console.error('Music link correction intake: failed; inspect private queue.');
     if(result&&typeof result==='object')result.linkCorrections={status:'ERROR'};
   }
+  try {
+    if(result&&typeof result==='object')result.rightsClarifications=soRCOnExistingTrigger_(e);
+  }catch(_){
+    console.error('Rights clarification processing failed; inspect private queue.');
+    if(result&&typeof result==='object')result.rightsClarifications={status:'ERROR'};
+  }
   return result;
 }
 // Explicit one-time activation by the existing authorized sender, after a successful
@@ -899,4 +905,46 @@ function syncOppsEnableMusicLinkCorrections(){
 function syncOppsDisableMusicLinkCorrections(){
   PropertiesService.getScriptProperties().setProperty(SO_LC.enableProperty,'false');
   return {status:'DISABLED',emails:0,writesToSongs:0};
+}
+
+// Rights clarification v1.0: existing sender, explicit dashboard request only.
+const SO_RC=Object.freeze({tab:'Rights Clarifications (PRIVATE)',headers:['Request ID','Song ID','Member ID','Question (PRIVATE)','Status','Requested On','Sent On','Resolved On','Resolution (PRIVATE)','Admin Notes (PRIVATE)'],maxPerRun:3});
+function soRCEligible_(q,s,m,b,corrections,removals,now){
+  if(!q||!s||!m||q.Status!=='Queued'||!/^RC-[a-f0-9-]{36}$/i.test(q['Request ID']))return false;
+  if(!/^SONG-[A-F0-9]{20}$/.test(q['Song ID'])||q['Song ID']!==s['Song ID']||q['Member ID']!==s['Member ID']||m['Member ID']!==s['Member ID'])return false;
+  if(s['Catalog Status']!=='Hidden'||!['Not Reviewed','Under Review','Needs Information','Approved'].includes(s['Review Status'])||s['Member Listing Authorization']!=='Yes')return false;
+  if(m['Membership Status']!=='Active Paid'||!SO_BB_V1.acceptedTiers.includes(m['Patreon Tier'])||!m['Eligibility Verified On']||!soBBEmailValid_(soBBEmail_(m['Patreon Email (PRIVATE)'])))return false;
+  if(now<Date.parse('2027-01-05T06:00:00Z')&&(!b||b['Member ID']!==m['Member ID']||b['Invite Status']!=='Accepted'||b['Eligibility Verified']!=='Yes'||soBBEmail_(b['Patreon Email (PRIVATE)'])!==soBBEmail_(m['Patreon Email (PRIVATE)'])))return false;
+  if(!q['Question (PRIVATE)']||q['Question (PRIVATE)'].length>500||!s['Song Title'])return false;
+  if(corrections.some(c=>c['Song ID']===q['Song ID']&&(c['Admin Action']||!['Applied','Expired','Cancelled','Rejected'].includes(c.Status))))return false;
+  if(removals.some(c=>c['Song ID']===q['Song ID']))return false;
+  return true;
+}
+function soRCMessage_(q,s){
+  return 'Hi,\n\nWhile reviewing your submission of "'+String(s['Song Title']).replace(/[\r\n]+/g,' ')+'" for the Sync Opps. Ready to License Catalog, we need clarification about the music rights.\n\nQuestion: '+q['Question (PRIVATE)']+'\n\nPlease reply to this email with the requested information and include your request reference: '+q['Request ID']+'. Your song will remain unpublished until review is complete.\n\nThanks,\nSync Opps.';
+}
+function soRCOnExistingTrigger_(e){
+  if(!e||!e.triggerUid||String(Session.getEffectiveUser().getEmail()).toLowerCase()!==SO_LC.sender)return {status:'NOT_AUTHORIZED_TRIGGER'};
+  const lock=LockService.getScriptLock();if(!lock.tryLock(5000))return {status:'BUSY'};
+  try{
+    const book=soBBBook_();if(!book.getSheetByName(SO_RC.tab))return {status:'QUEUE_NOT_INSTALLED'};
+    const queue=soBBTable_(book,SO_RC.tab);SO_RC.headers.forEach(h=>soBBI_(queue,h));
+    const counts={sent:0,blocked:0,uncertain:0};
+    // Claim a specific queued row only. Never retry a Sending/Delivery Uncertain row.
+    for(let i=0;i<queue.rows.length;i++){
+      if(counts.sent+counts.uncertain>=SO_RC.maxPerRun||MailApp.getRemainingDailyQuota()<1)break;
+      const q=soLCRecord_(queue,queue.rows[i]);if(q.Status!=='Queued')continue;
+      const songs=soBBTable_(book,'Songs'),members=soBBTable_(book,'Members'),beta=soBBTable_(book,'Beta 40');
+      const song=soLCUnique_(songs,'Song ID',q['Song ID']),member=soLCUnique_(members,'Member ID',q['Member ID']),slot=soLCUnique_(beta,'Member ID',q['Member ID']);
+      const correction=soBBTable_(book,SO_LC.tab),removal=soBBTable_(book,'Song Removal Requests (PRIVATE)');
+      const active=queue.rows.filter(row=>soBBC_(row,queue,'Song ID')===q['Song ID']&&!['Resolved','Cancelled'].includes(soBBC_(row,queue,'Status')));
+      const ids=queue.rows.filter(row=>soBBC_(row,queue,'Request ID')===q['Request ID']);
+      if(active.length!==1||ids.length!==1||!soRCEligible_(q,song?.row,member?.row,slot?.row,correction.rows.map(r=>soLCRecord_(correction,r)),removal.rows.map(r=>soLCRecord_(removal,r)),Date.now())){counts.blocked++;continue;}
+      soBBSet_(queue,i,'Status','Sending');SpreadsheetApp.flush();
+      try{MailApp.sendEmail({to:soBBEmail_(member.row['Patreon Email (PRIVATE)']),subject:'Sync Opps. | Music Rights Clarification Needed',body:soRCMessage_(q,song.row),name:'Sync Opps.'});}
+      catch(_){soBBSet_(queue,i,'Status','Delivery Uncertain');soBBSet_(queue,i,'Admin Notes (PRIVATE)','Manual reconciliation required. Do not automatically resend.');counts.uncertain++;continue;}
+      soBBSet_(queue,i,'Sent On',new Date().toISOString());soBBSet_(queue,i,'Status','Awaiting Member Response');counts.sent++;
+    }
+    return counts;
+  }finally{lock.releaseLock();}
 }
