@@ -1,0 +1,43 @@
+name: Synthetic correction response contract QA
+on:
+  push:
+    branches: [qa-music-link-correction-20261124]
+    paths: ['.github/workflows/music-link-correction-response-qa.yml']
+permissions:
+  contents: read
+jobs:
+  response-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Submit one clearly marked synthetic response without valid token or member
+        run: |
+          npm install --no-save --no-package-lock playwright
+          npx playwright install chromium
+          node <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try{
+              const page=await browser.newPage();
+              const u=new URL('https://tally.so/r/KpVK1K');
+              for(const [k,v] of Object.entries({request_token:'QA-INVALID-NO-AUTHORITY-20261124',song_id:'QA-NO-REAL-SONG-20261124',song_title:'INTERNAL QA ONLY - Synthetic Correction',issue:'Synthetic response contract test; not a real song or request.'}))u.searchParams.set(k,v);
+              await page.goto(u.href,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.getByPlaceholder('Email associated with your membership').fill('qa@example.com');
+              await page.getByPlaceholder('https://...',{exact:true}).fill('https://example.com/synthetic-qa.mp3');
+              let picker=page.getByRole('combobox').first();
+              if(!(await picker.count()))picker=page.getByText(/^(Select an option|Select option|Choose an option)$/i).first();
+              if(!(await picker.count())){console.log(JSON.stringify({qaDropdownControls:await page.locator('[role],button,input').evaluateAll(es=>es.slice(0,40).map(e=>({tag:e.tagName,role:e.getAttribute('role'),text:e.innerText?.slice(0,80),placeholder:e.getAttribute('placeholder')})))}));throw Error('Unable to identify dropdown');}
+              await picker.click();
+              await page.getByText('Direct MP3',{exact:true}).last().click();
+              await page.getByText('I authorize public listening to this corrected music link after approval and confirm that the song and its rights information have not changed.',{exact:true}).click();
+              await page.getByRole('button',{name:/submit/i}).click();
+              await page.getByText(/thank you/i).first().waitFor({timeout:20000});
+              console.log(JSON.stringify({qaResponseContract:'submitted',synthetic:true,validToken:false,realMember:false,realSong:false}));
+            }finally{await browser.close();}
+          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          NODE
