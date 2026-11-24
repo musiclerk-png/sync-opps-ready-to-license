@@ -1,4 +1,4 @@
-name: Isolated Tally music URL transfer QA
+name: Isolated optional music link tester QA
 on:
   push:
     branches: [qa-feed-timing-20261124]
@@ -6,42 +6,84 @@ on:
 permissions:
   contents: read
 jobs:
-  test-free-embed:
+  optional-tester:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check answer piping versus dynamic iframe URL without submitting
+      - name: Test optional widget inside existing QA Tally embed without deploying or submitting
         run: |
           npm install --no-save --no-package-lock playwright
           npx playwright install chromium
           node <<'NODE'
           const {chromium}=require('playwright');
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const html=fs.readFileSync('qa/optional-link-tester-isolated.html','utf8');
+          const audio=Buffer.alloc(44+16000*2);
+          audio.write('RIFF',0);audio.writeUInt32LE(audio.length-8,4);audio.write('WAVEfmt ',8);audio.writeUInt32LE(16,16);audio.writeUInt16LE(1,20);audio.writeUInt16LE(1,22);audio.writeUInt32LE(8000,24);audio.writeUInt32LE(16000,28);audio.writeUInt16LE(2,32);audio.writeUInt16LE(16,34);audio.write('data',36);audio.writeUInt32LE(audio.length-44,40);
+          for(let i=0;i<16000;i++)audio.writeInt16LE(Math.round(1800*Math.sin(2*Math.PI*440*i/8000)),44+2*i);
+          const qa='https://tally.so/r/kbN8jZ';
+          const source='https://example.com/qa-tone.mp3';
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
-              const page=await browser.newPage();
-              await page.goto('https://tally.so/r/kbN8jZ',{waitUntil:'domcontentloaded',timeout:30000});
-              const input=page.locator('input').filter({visible:true}).first();
-              await input.waitFor({state:'visible',timeout:20000});
-              const inspect=async()=>{
-                return await page.evaluate(()=>{
-                  const frames=Array.from(document.querySelectorAll('iframe')).map(f=>({src:f.getAttribute('src')||'',visible:!!f.getClientRects().length})).filter(x=>x.src.includes('catalog-player.html'));
-                  return {frames,controlText:document.body.innerText.includes('Answer piping control:')};
-                });
-              };
-              const initial=await inspect();
-              for(const value of ['https://example.com/qa-song-one','https://example.com/qa-song-two']){
-                await input.fill(value);
-                await input.press('Tab');
-                await page.waitForTimeout(1500);
-                const current=await inspect();
-                const control=await page.locator('body').innerText();
-                console.log(JSON.stringify({qaValue:value,initial,current,textPipingWorks:control.includes(value),embedReceivesValue:current.frames.some(f=>{try{return new URL(f.src).searchParams.get('qa_source')===value;}catch{return false;}})}));
+              for(const mobile of [false,true]){
+                const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:900},isMobile:mobile,hasTouch:mobile});
+                await context.route('**/qa/catalog-player.html?qa_control=static',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
+                await context.route('https://example.com/qa-tone.mp3',route=>route.fulfill({status:200,contentType:'audio/wav',body:audio}));
+                await context.route('https://example.com/qa-broken.mp3',route=>route.fulfill({status:404,body:'Not found'}));
+                await context.route('https://open.spotify.com/embed/track/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<html><body>Mock provider player only</body></html>'}));
+                const page=await context.newPage();
+                await page.goto(qa,{waitUntil:'domcontentloaded',timeout:30000});
+                const input=page.locator('input').filter({visible:true}).first();
+                await input.waitFor({state:'visible',timeout:20000});
+                const frame=page.frameLocator('iframe[src*="qa_control=static"]');
+                await frame.locator('#source').waitFor({state:'visible',timeout:20000});
+                const origin=await frame.locator('body').evaluate(()=>location.origin);
+                assert.equal(origin,'https://musiclerk-png.github.io');
+                const original=page.url();
+                const status=frame.locator('#status');
+                // Skip path: native Tally field accepts a link with untouched tester.
+                await input.fill(source);await input.press('Tab');
+                assert.equal(await input.inputValue(),source);
+                assert.equal(await status.innerText(),'No link tested.');
+                await input.fill('');
+                await frame.locator('#source').fill('https://example.com/not-music');
+                await frame.locator('#test').click();
+                assert.match(await status.innerText(),/not a recognized/);
+                assert.equal(await frame.locator('#result').isVisible(),false);
+                await frame.locator('#source').fill('https://s.disco.ac/qa-share');
+                await frame.locator('#test').click();
+                assert.match(await status.innerText(),/Share link, not an embed/);
+                await frame.locator('#source').fill('https://open.spotify.com/track/0123456789ABCDEFGHIJKL');
+                await frame.locator('#test').click();
+                assert.match(await status.innerText(),/Playback has not been verified/);
+                assert.equal(await frame.locator('#player iframe').count(),1);
+                await frame.locator('#source').fill('https://example.com/qa-broken.mp3');
+                await frame.locator('#test').click();
+                await frame.locator('audio').evaluate(a=>{a.play().catch(()=>{});});
+                await frame.locator('#status').filter({hasText:'Audio could not load'}).waitFor({timeout:10000});
+                await frame.locator('#source').fill(source);
+                await frame.locator('#test').click();
+                await frame.locator('audio').evaluate(a=>{a.play().catch(()=>{});});
+                await frame.locator('#status').filter({hasText:'Audio playback started'}).waitFor({timeout:10000});
+                const media=await frame.locator('audio').evaluate(a=>({duration:a.duration,paused:a.paused,readyState:a.readyState}));
+                assert.equal(media.duration,2);
+                assert.equal(await frame.locator('#copyValue').inputValue(),source);
+                await frame.locator('#copy').click();
+                await frame.locator('#copyStatus').filter({hasText:/Copied|Copy not permitted/}).waitFor({timeout:10000});
+                const copyMessage=await frame.locator('#copyStatus').innerText();
+                // Real keyboard clipboard test, without browser permission grants.
+                if(!copyMessage.startsWith('Copied'))await frame.locator('#copyValue').press('Control+c');
+                await input.click();await page.keyboard.press('Control+v');
+                const pasted=await input.inputValue();
+                assert.equal(page.url(),original);
+                console.log(JSON.stringify({qaOptional:mobile?'mobile viewport':'desktop',skipInputWorks:true,invalidRejected:true,discoShareRejected:true,mockProviderNotMarkedPlayable:true,brokenAudioDetected:true,syntheticAudioDecoded:true,media,copyMessage,actualClipboardPaste:pasted===source,iframeAllow:await page.locator('iframe[src*="qa_control=static"]').getAttribute('allow'),stayedOnForm:true,noSubmission:true}));
+                await context.close();
               }
-              console.log('QA completed; no submit action performed.');
             }finally{await browser.close();}
-          })().catch(e=>{console.error(e.message);process.exitCode=1;});
+          })().catch(e=>{console.error(e.stack||e.message);process.exitCode=1;});
           NODE
