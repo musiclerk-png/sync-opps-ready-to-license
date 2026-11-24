@@ -584,6 +584,14 @@ function soBBPlayerAllowedV11_(source,stream){
   if(source.includes('bandcamp'))return ['bandcamp.com','www.bandcamp.com'].includes(host)&&/\/EmbeddedPlayer\//i.test(path);
   if(source.includes('apple'))return host==='embed.music.apple.com';
   if(source.includes('disco'))return ['disco.ac','www.disco.ac'].includes(host);
+  // Explicitly reject unsupported share pages and folders, even when a
+  // provider label happens to include the words "audio" or "MP3".
+  if(source.includes('dropbox'))
+    return ['dropbox.com','www.dropbox.com'].includes(host)&&
+      /^\/(?:s|scl\/fi)\/[A-Za-z0-9_-]+\/[^/]+\.(?:mp3|wav|m4a|aac|ogg)$/i.test(path);
+  if(source.includes('google drive'))
+    return host==='drive.google.com'&&
+      /^\/file\/d\/[A-Za-z0-9_-]{15,}\/(?:view|preview)?\/?$/i.test(path);
   return (source.includes('mp3')||source.includes('audio'))&&/\.mp3$/i.test(path);
 }
 function soBBAcceptanceEligible_(row,apps,emailIndex,members,betaSlots){
