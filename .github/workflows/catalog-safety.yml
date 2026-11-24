@@ -38,40 +38,34 @@ jobs:
       - name: Test scheduled intake lock contention and server failures
         run: node backend/tests/test_intake_lock_overlap.js
 
-      - name: Read-only production feed timing sample
+      - name: Six matched advanced Sheets comparisons
         run: |
           node <<'NODE'
           const {performance}=require('node:perf_hooks');
-          const fs=require('node:fs');
-          const config=JSON.parse(fs.readFileSync('feed-config.json','utf8'));
-          const endpoint=config.endpoint;
-          if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint)) throw Error('Unexpected endpoint');
+          const {endpoint}=JSON.parse(require('node:fs').readFileSync('feed-config.json','utf8'));
+          if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(endpoint))throw Error('Invalid endpoint');
+          const median=a=>{const b=[...a].sort((x,y)=>x-y);return (b[2]+b[3])/2;};
           (async()=>{
-            let collected=0;
-            for(let i=1;i<=12 && collected<3;i++){
+            const samples=[];
+            for(let i=1;i<=6;i++){
               const url=new URL(endpoint);
               url.searchParams.set('benchmark','1');
+              url.searchParams.set('compare','advanced');
               url.searchParams.set('probe',Date.now()+'-'+i);
               const start=performance.now();
-              try{
-                const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'});
-                const headersMs=Math.round(performance.now()-start);
-                const raw=await response.text();
-                const totalMs=Math.round(performance.now()-start);
-                const match=raw.trim().match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
-                if(!response.ok || !match) throw Error('Unexpected public response: HTTP '+response.status);
-                const data=JSON.parse(match[1]),d=data.readDiagnostics;
-                if(data.schemaVersion!==1 || !Array.isArray(data.songs) || !d || !Number.isFinite(d.serverMs)) throw Error('Invalid benchmark schema');
-                if(!d.stages || !Array.isArray(d.stages.tableReads) || d.stages.tableReads.length!==7){
-                  console.log(JSON.stringify({attempt:i,stageTimingReady:false,serverMs:d.serverMs}));
-                  await new Promise(resolve=>setTimeout(resolve,10000));
-                  continue;
-                }
-                collected++;
-                console.log(JSON.stringify({sample:collected,http:response.status,headersMs,totalMs,serverMs:d.serverMs,path:d.path,fallbackReason:d.fallbackReason,stages:d.stages??null,approvedCount:data.songs.length,expectedTrack:data.songs.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)}));
-              }catch(e){console.log(JSON.stringify({attempt:i,error:String(e.message),elapsedMs:Math.round(performance.now()-start)}));await new Promise(resolve=>setTimeout(resolve,5000));}
+              const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(25000),redirect:'follow'});
+              const raw=await response.text();
+              const elapsedMs=Math.round(performance.now()-start);
+              const match=raw.trim().match(/^window\.syncOppsApprovedFeedV1\((\{[\s\S]*\})\);?$/);
+              if(!response.ok||!match)throw Error('Public feed response invalid: HTTP '+response.status);
+              const data=JSON.parse(match[1]),d=data.readDiagnostics,c=d?.advancedComparison;
+              const sample={sample:i,http:response.status,elapsedMs,legacyMs:d?.serverMs,advancedMs:c?.serverMs,status:c?.status??'MISSING',reason:c?.reason??null,parity:c?.parity===true,legacyPath:d?.path,legacyTablesMs:d?.stages?.tablesMs,advancedTablesMs:c?.stages?.tablesMs,approvedCount:data.songs?.length,expectedTrack:data.songs?.some(s=>s.title==='Soul Pocket Groove'),privateContactPattern:/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/.test(raw)};
+              console.log(JSON.stringify(sample));
+              if(data.schemaVersion!==1||!Array.isArray(data.songs)||sample.approvedCount!==1||!sample.expectedTrack||sample.privateContactPattern||sample.legacyPath!=='legacy'||sample.status!=='OK'||!sample.parity||!Number.isFinite(sample.legacyMs)||!Number.isFinite(sample.advancedMs))throw Error('Comparison acceptance failed; stop without changing normal reader');
+              samples.push(sample);
             }
-            if(collected!==3)throw Error('Three stage timing samples not available within bounded attempts');
+            const legacyMedianMs=median(samples.map(s=>s.legacyMs)),advancedMedianMs=median(samples.map(s=>s.advancedMs)),savingMs=legacyMedianMs-advancedMedianMs,savingPct=100*savingMs/legacyMedianMs;
+            const pairedMedianSavingMs=median(samples.map(s=>s.legacyMs-s.advancedMs));
+            console.log(JSON.stringify({summary:true,valid:samples.length,legacyMedianMs,advancedMedianMs,savingMs,savingPct,pairedMedianSavingMs,passes:savingMs>=750&&savingPct>=25&&pairedMedianSavingMs>=750}));
           })().catch(e=>{console.error(e.message);process.exitCode=1;});
           NODE
-
