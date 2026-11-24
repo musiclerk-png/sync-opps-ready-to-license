@@ -56,6 +56,11 @@ check('Fake inquiry site rejected',normalizeSong({...seed,buyerInquiryUrl:'https
 check('Wrong Cloudinary host rejected',normalizeSong({...seed,player:{type:'mp3',url:file.replace('res.cloudinary.com','evil.example')}})===null);
 check('Nonmanaged track cannot use MP3',normalizeSong({...seed,source:'SoundCloud'})===null);
 check('Valid SoundCloud track remains usable',!!normalizeSong({...seed,source:'SoundCloud',player:{type:'soundcloud',url:'https://soundcloud.com/example/test'}}));
+const officialDiscoPlayer='https://record-label.disco.ac/e/t/56689167?download=false&theme=white';
+check('DISCO creator-subdomain official iframe src accepted',!!normalizeSong({...seed,source:'DISCO',player:{type:'disco',url:officialDiscoPlayer}}));
+check('DISCO short share link not accepted as player',normalizeSong({...seed,source:'DISCO',player:{type:'disco',url:'https://s.disco.ac/abcDEF'}})===null);
+check('DISCO invalid paths and spoofed hosts rejected',normalizeSong({...seed,source:'DISCO',player:{type:'disco',url:'https://record-label.disco.ac/play/56689167'}})===null&&normalizeSong({...seed,source:'DISCO',player:{type:'disco',url:'https://record-label.disco.ac.evil.example/e/t/56689167'}})===null);
+
 const dbLink='https://www.dropbox.com/scl/fi/a1b2c3d4e5f6/example-audio.wav?rlkey=allow123&dl=0';
 const drLink='https://drive.google.com/file/d/1X2y3Z4aBcDeFgHiJkLmNoPqRstuVwxy/view?usp=sharing';
 const dbSong=normalizeSong({...seed,source:'Dropbox MP3',player:{type:'dropbox',url:dbLink}});
